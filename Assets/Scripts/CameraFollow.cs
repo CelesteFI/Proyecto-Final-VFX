@@ -1,38 +1,54 @@
 using UnityEngine;
+using UnityEngine.InputSystem; // Librería oficial del Nuevo Input System
 
 public class CameraFollow : MonoBehaviour
 {
+    [Header("Objetivo")]
     public Transform target;
+    public Vector3 targetOffset = new Vector3(0f, 1.6f, 0f);
 
-    [Header("Configuración Orbital")]
-    public float distance = 5.0f;          // Distancia detrás del jugador
-    public float height = 2.2f;            // Altura sobre el jugador
-    public float mouseSensitivity = 3.0f;  // Sensibilidad del ratón
-    public float minVerticalAngle = -20f;  // Límite hacia arriba
-    public float maxVerticalAngle = 60f;   // Límite hacia abajo
+    [Header("Control Orbital")]
+    public float mouseSensitivity = 0.15f; // Ajustado para el valor delta del New Input System
+    public float minVerticalAngle = -15f;
+    public float maxVerticalAngle = 60f;
 
-    private float currentX = 0.0f;
-    private float currentY = 20.0f;
+    [Header("Distancias y Colisión")]
+    public float defaultDistance = 5.0f;
+    public float minDistance = 1.0f;
+    public float smoothSpeed = 14f;
+    public float sphereRadius = 0.25f;
+    public LayerMask collisionLayers = ~0;
+
+    private float currentX = 0f;
+    private float currentY = 20f;
+    private float currentDistance;
 
     void Start()
     {
-        // Ocultar y bloquear el cursor en el centro de la pantalla mientras juegas
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        currentDistance = defaultDistance;
     }
 
     void Update()
     {
-        // Leer el movimiento del ratón
-        currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
-        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-        currentY = Mathf.Clamp(currentY, minVerticalAngle, maxVerticalAngle);
+        Mouse mouse = Mouse.current;
+        Keyboard keyboard = Keyboard.current;
 
-        // Si presionas Escape, liberas el ratón
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (mouse != null)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            // Lectura directa del delta del ratón en píxeles del nuevo sistema
+            Vector2 mouseDelta = mouse.delta.ReadValue();
+            currentX += mouseDelta.x * mouseSensitivity;
+            currentY -= mouseDelta.y * mouseSensitivity;
+            currentY = Mathf.Clamp(currentY, minVerticalAngle, maxVerticalAngle);
+        }
+
+        // Liberar cursor con Escape
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+        {
+            Cursor.lockState = (Cursor.lockState == CursorLockMode.Locked) ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = !Cursor.visible;
         }
     }
 
@@ -40,12 +56,21 @@ public class CameraFollow : MonoBehaviour
     {
         if (target == null) return;
 
-        // Calcular posición orbital alrededor del Player
-        Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
-        Vector3 direction = new Vector3(0, 0, -distance);
-        Vector3 targetPosition = target.position + Vector3.up * height;
+        Vector3 pivot = target.position + targetOffset;
+        Quaternion rotation = Quaternion.Euler(currentY, currentX, 0f);
+        Vector3 camDir = rotation * -Vector3.forward;
 
-        transform.position = targetPosition + rotation * direction;
-        transform.LookAt(targetPosition);
+        // Detección física de muros/árboles
+        float targetDist = defaultDistance;
+        RaycastHit hit;
+        if (Physics.SphereCast(pivot, sphereRadius, camDir, out hit, defaultDistance, collisionLayers))
+        {
+            targetDist = Mathf.Clamp(hit.distance - 0.15f, minDistance, defaultDistance);
+        }
+
+        currentDistance = Mathf.Lerp(currentDistance, targetDist, Time.deltaTime * smoothSpeed);
+
+        transform.position = pivot + (camDir * currentDistance);
+        transform.LookAt(pivot);
     }
 }

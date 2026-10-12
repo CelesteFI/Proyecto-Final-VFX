@@ -18689,11 +18689,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 999690169}
-  distance: 5
-  height: 2.2
+  targetOffset: {x: 0, y: 1.6, z: 0}
   mouseSensitivity: 3
   minVerticalAngle: -20
   maxVerticalAngle: 60
+  defaultDistance: 5
+  minDistance: 1
+  smoothSpeed: 14
+  sphereRadius: 0.25
+  collisionLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &331363328
 GameObject:
   m_ObjectHideFlags: 0
@@ -61536,7 +61542,7 @@ GameObject:
   - component: {fileID: 999690168}
   - component: {fileID: 999690167}
   - component: {fileID: 999690165}
-  - component: {fileID: 999690164}
+  - component: {fileID: 999690170}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -61544,21 +61550,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &999690164
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 999690163}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8957b869dc760414d8e40b021213b1ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  walkSpeed: 6
-  rotationSpeed: 10
-  gravity: -15
 --- !u!143 &999690165
 CharacterController:
   m_ObjectHideFlags: 0
@@ -61656,6 +61647,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &999690170
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 999690163}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd9573c821b5b8408c7316e285db134, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FSM
 --- !u!1 &1002589691
 GameObject:
   m_ObjectHideFlags: 0
