@@ -1,130 +1,143 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // Librería oficial del Nuevo Input System
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Locomoción")]
-    public float moveSpeed = 6.5f;
-    public float rotationSmoothTime = 0.1f;
+    [Header("Aceleración y Suavizado")]
+    public float acceleration = 14f;
+    public float deceleration = 18f;
+    public float rotationSmoothTime = 0.08f;
 
-    [Header("Física")]
-    public float gravity = -18.0f;
+    [Header("Física y Salto Asistido")]
+    public float jumpHeight = 2.0f;
+    public float gravity = -20f;
+    public float fallMultiplier = 1.8f;
+    public float coyoteTime = 0.15f;
+    public float jumpBufferTime = 0.12f;
 
-    [Header("Esquiva (Dash)")]
-    public float dashSpeed = 16.0f;
-    public float dashDuration = 0.25f;
-    private bool isDashing = false;
-    private float dashTimeCounter = 0f;
-    private Vector3 dashDirection;
+    [Header("Dash")]
+    public float dashDuration = 0.22f;
 
     private CharacterController controller;
     private Transform camTransform;
+    private TagTeamManager tagTeam;
+
+    private Vector3 currentMoveVelocity;
+    private float verticalVelocityY;
     private float turnSmoothVelocity;
-    private Vector3 verticalVelocity;
+
+    private float coyoteCounter;
+    private float jumpBufferCounter;
+    private bool isDashing = false;
+    private float dashTimer = 0f;
+    private Vector3 dashDirection;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        if (Camera.main != null)
-        {
-            camTransform = Camera.main.transform;
-        }
+        tagTeam = GetComponent<TagTeamManager>();
+        if (Camera.main != null) camTransform = Camera.main.transform;
     }
 
     void Update()
     {
-        // Verificar que el teclado y el ratón existan en el hardware
-        Keyboard keyboard = Keyboard.current;
+        Keyboard kb = Keyboard.current;
         Mouse mouse = Mouse.current;
-        if (keyboard == null) return;
+        if (kb == null) return;
 
-        // 1. Gravedad y suelo
-        if (controller.isGrounded && verticalVelocity.y < 0)
+        HeroCombatData activeHero = (tagTeam != null) ? tagTeam.ActiveHero : null;
+        float baseSpeed = (activeHero != null) ? activeHero.moveSpeed : 7f;
+        float dashSpeed = (activeHero != null) ? activeHero.dashSpeed : 16f;
+
+        // 1. Detección de suelo y Coyote Time
+        if (controller.isGrounded)
         {
-            verticalVelocity.y = -2f;
-        }
-
-        // 2. Clics y acciones directas (Nuevo Input System)
-        if (mouse != null)
-        {
-            // Clic Izquierdo Físico = Ataque
-            if (mouse.leftButton.wasPressedThisFrame && !isDashing)
-            {
-                Debug.Log("⚔️ [CLIC IZQUIERDO]: Ataque Básico");
-            }
-
-            // Clic Derecho Físico = Habilidad
-            if (mouse.rightButton.wasPressedThisFrame && !isDashing)
-            {
-                Debug.Log("🛡️ [CLIC DERECHO]: Habilidad Primaria");
-            }
-        }
-
-        // Tecla E Física = Habilidad alternativa
-        if (keyboard.eKey.wasPressedThisFrame && !isDashing)
-        {
-            Debug.Log("🛡️ [TECLA E]: Habilidad Primaria");
-        }
-
-        // Barra Espaciadora Física = Dash / Esquiva
-        if (keyboard.spaceKey.wasPressedThisFrame && !isDashing)
-        {
-            IniciarDash(keyboard);
-        }
-
-        // 3. Movimiento WASD o ejecución del Dash
-        if (isDashing)
-        {
-            controller.Move(dashDirection * dashSpeed * Time.deltaTime);
-            dashTimeCounter -= Time.deltaTime;
-            if (dashTimeCounter <= 0f)
-            {
-                isDashing = false;
-            }
+            coyoteCounter = coyoteTime;
+            if (verticalVelocityY < 0f) verticalVelocityY = -2f;
         }
         else
         {
-            // Lectura de teclas físicas individuales
-            float horizontal = 0f;
-            float vertical = 0f;
-
-            if (keyboard.wKey.isPressed) vertical += 1f;
-            if (keyboard.sKey.isPressed) vertical -= 1f;
-            if (keyboard.dKey.isPressed) horizontal += 1f;
-            if (keyboard.aKey.isPressed) horizontal -= 1f;
-
-            Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
-
-            if (inputDir.magnitude >= 0.1f && camTransform != null)
-            {
-                // Orientación hacia el frente de la cámara
-                float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + camTransform.eulerAngles.y;
-                float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, rotationSmoothTime);
-                transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
-
-                Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-                controller.Move(moveDir.normalized * moveSpeed * Time.deltaTime);
-            }
+            coyoteCounter -= Time.deltaTime;
         }
 
-        // Aplicar gravedad
-        verticalVelocity.y += gravity * Time.deltaTime;
-        controller.Move(verticalVelocity * Time.deltaTime);
+        // 2. Buffer de salto
+        if (kb.spaceKey.wasPressedThisFrame) jumpBufferCounter = jumpBufferTime;
+        else jumpBufferCounter -= Time.deltaTime;
+
+        // 3. Ejecutar salto si las ventanas coinciden
+        if (jumpBufferCounter > 0f && coyoteCounter > 0f && !isDashing)
+        {
+            verticalVelocityY = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            jumpBufferCounter = 0f;
+            coyoteCounter = 0f;
+        }
+
+        // 4. Dash
+        if (kb.leftShiftKey.wasPressedThisFrame && !isDashing)
+        {
+            IniciarDash(kb);
+        }
+
+        // 5. Locomoción horizontal
+        if (isDashing)
+        {
+            controller.Move(dashDirection * dashSpeed * Time.deltaTime);
+            dashTimer -= Time.deltaTime;
+            if (dashTimer <= 0f) isDashing = false;
+        }
+        else
+        {
+            ProcesarMovimiento(kb, baseSpeed);
+        }
+
+        // 6. Gravedad con caída rápida responsiva
+        if (!isDashing)
+        {
+            float mult = (verticalVelocityY < 0f) ? fallMultiplier : 1f;
+            verticalVelocityY += gravity * mult * Time.deltaTime;
+            controller.Move(new Vector3(0, verticalVelocityY, 0) * Time.deltaTime);
+        }
     }
 
-    private void IniciarDash(Keyboard keyboard)
+    private void ProcesarMovimiento(Keyboard kb, float speed)
+    {
+        float h = 0f; float v = 0f;
+        if (kb.wKey.isPressed) v += 1f;
+        if (kb.sKey.isPressed) v -= 1f;
+        if (kb.dKey.isPressed) h += 1f;
+        if (kb.aKey.isPressed) h -= 1f;
+
+        Vector3 targetDir = new Vector3(h, 0f, v).normalized;
+        Vector3 targetVelocity = Vector3.zero;
+
+        if (targetDir.magnitude >= 0.1f && camTransform != null)
+        {
+            float targetAngle = Mathf.Atan2(targetDir.x, targetDir.z) * Mathf.Rad2Deg + camTransform.eulerAngles.y;
+            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, rotationSmoothTime);
+            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+
+            targetVelocity = (Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward).normalized * speed;
+        }
+
+        // Aceleración / desaceleración suave
+        float rate = (targetVelocity.magnitude > 0.1f) ? acceleration : deceleration;
+        currentMoveVelocity = Vector3.MoveTowards(currentMoveVelocity, targetVelocity, rate * Time.deltaTime);
+
+        controller.Move(currentMoveVelocity * Time.deltaTime);
+    }
+
+    private void IniciarDash(Keyboard kb)
     {
         isDashing = true;
-        dashTimeCounter = dashDuration;
+        dashTimer = dashDuration;
+        verticalVelocityY = 0f; // Suspender caída durante el dash
 
-        float h = 0f;
-        float v = 0f;
-        if (keyboard.wKey.isPressed) v += 1f;
-        if (keyboard.sKey.isPressed) v -= 1f;
-        if (keyboard.dKey.isPressed) h += 1f;
-        if (keyboard.aKey.isPressed) h -= 1f;
-
+        float h = 0f; float v = 0f;
+        if (kb.wKey.isPressed) v += 1f;
+        if (kb.sKey.isPressed) v -= 1f;
+        if (kb.dKey.isPressed) h += 1f;
+        if (kb.aKey.isPressed) h -= 1f;
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
 
         if (inputDir.magnitude >= 0.1f && camTransform != null)
@@ -136,7 +149,5 @@ public class PlayerController : MonoBehaviour
         {
             dashDirection = transform.forward;
         }
-
-        Debug.Log("💨 [ESPACIO]: Esquiva / Dash con invulnerabilidad");
     }
 }

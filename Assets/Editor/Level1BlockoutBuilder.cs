@@ -232,6 +232,132 @@ public class Level1BlockoutBuilder : EditorWindow
         Debug.Log("¡Nivel 1 Master generado con éxito! Escenario completo con materiales de color, árboles, lagos y props.");
     }
 
+    public static void ConfigurarEntregaNivel1()
+    {
+        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/Scenes/Maqueta Nivel 1.unity")
+            throw new System.InvalidOperationException("Abre Maqueta Nivel 1 fuera de Play Mode.");
+
+        GameObject player = GameObject.Find("Player");
+        GameObject enemy = GameObject.Find("Enemigo");
+        GameObject root = GameObject.Find("Level1_Bosque_Oscuridad_Blockout");
+        Camera camera = Camera.main;
+        if (player == null || enemy == null || root == null || camera == null)
+            throw new System.InvalidOperationException("Faltan objetos requeridos de la maqueta.");
+        var controller = player.GetComponent<CharacterController>();
+        var tagTeam = player.GetComponent<TagTeamManager>();
+        var follow = camera.GetComponent<CameraFollow>();
+        var body = enemy.GetComponent<Rigidbody>();
+        var health = enemy.GetComponent<HealthSystem>();
+        var surface = root.GetComponent<Unity.AI.Navigation.NavMeshSurface>();
+        if (controller == null || player.GetComponent<PlayerController>() == null || tagTeam == null || follow == null || body == null || health == null || surface == null)
+            throw new System.InvalidOperationException("Faltan componentes requeridos.");
+        Undo.RecordObjects(new Object[] { controller, tagTeam, follow, body, health, player.transform, enemy.transform }, "Configurar entrega Nivel 1");
+        controller.slopeLimit = 45f;
+        controller.stepOffset = 0.3f;
+        controller.skinWidth = 0.08f;
+        controller.center = Vector3.up;
+        controller.height = 2f;
+        controller.radius = 0.5f;
+        player.layer = LayerMask.NameToLayer("Player");
+        player.transform.position = new Vector3(0f, 0.6f, 34f);
+        player.transform.rotation = Quaternion.identity;
+        enemy.layer = LayerMask.NameToLayer("Default");
+        enemy.transform.position = new Vector3(0f, 1.6f, 38f);
+        body.isKinematic = false;
+        body.useGravity = true;
+        body.constraints = RigidbodyConstraints.FreezeRotation;
+        health.maxHealth = 100f;
+        health.currentHealth = 100f;
+        health.flashColor = Color.white;
+        enemy.GetComponent<MeshRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Enemigo.mat");
+
+        // Reutilizar la cápsula existente y alinear su imagen con Center Y = 1.
+        MeshFilter originalMesh = player.GetComponent<MeshFilter>();
+        MeshRenderer originalRenderer = player.GetComponent<MeshRenderer>();
+        if (originalMesh != null && originalRenderer != null)
+        {
+            GameObject visual = new GameObject("Visual_Capsula");
+            Undo.RegisterCreatedObjectUndo(visual, "Alinear cápsula existente");
+            visual.transform.SetParent(player.transform, false);
+            visual.transform.localPosition = Vector3.up;
+            visual.layer = player.layer;
+            Undo.AddComponent<MeshFilter>(visual).sharedMesh = originalMesh.sharedMesh;
+            var renderer = Undo.AddComponent<MeshRenderer>(visual);
+            EditorUtility.CopySerialized(originalRenderer, renderer);
+            renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/BlockoutColors/M_Blockout_PiedraRuina.mat");
+            Undo.DestroyObjectImmediate(originalRenderer);
+            Undo.DestroyObjectImmediate(originalMesh);
+        }
+        if (tagTeam.attackPoint == null)
+        {
+            GameObject point = new GameObject("AttackPoint");
+            Undo.RegisterCreatedObjectUndo(point, "Enlazar AttackPoint");
+            point.transform.SetParent(player.transform, false);
+            point.transform.localPosition = new Vector3(0f, 1f, 1.2f);
+            point.layer = player.layer;
+            tagTeam.attackPoint = point.transform;
+        }
+        tagTeam.enemyLayers = LayerMask.GetMask("Default");
+        tagTeam.vfxRockWallPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/VFX/Muro_Basalto_Habilidad.prefab");
+        tagTeam.caelen.currentHealth = tagTeam.caelen.maxHealth;
+        tagTeam.illya.currentHealth = tagTeam.illya.maxHealth;
+        tagTeam.illya.proxyColor = new Color(0.25f, 0.65f, 0.35f);
+        follow.target = player.transform;
+        follow.targetOffset = new Vector3(0f, 1.6f, 0f);
+        follow.collisionLayers = LayerMask.GetMask("Default", "Environment");
+        follow.mouseSensitivity = 0.12f;
+
+        int groundCount = 0;
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            child.gameObject.layer = root.layer;
+        foreach (Collider collider in root.GetComponentsInChildren<Collider>())
+        {
+            if (collider.isTrigger) continue;
+            string name = collider.gameObject.name;
+            bool ground = name.Contains("Piso") || name.Contains("Terreno_Base") || name.Contains("Puente_Segmento") || name.Contains("Escalinata") || name.Contains("Escalon") || name.Contains("Rampa");
+            var modifier = collider.GetComponent<Unity.AI.Navigation.NavMeshModifier>();
+            if (modifier == null) modifier = Undo.AddComponent<Unity.AI.Navigation.NavMeshModifier>(collider.gameObject);
+            Undo.RecordObject(modifier, "Clasificar geometría NavMesh");
+            modifier.overrideArea = true;
+            modifier.area = UnityEngine.AI.NavMesh.GetAreaFromName(ground ? "Walkable" : "Not Walkable");
+            modifier.applyToChildren = false;
+            modifier.ignoreFromBuild = false;
+            if (ground) groundCount++;
+        }
+        Undo.RecordObject(surface, "Hornear NavMesh Nivel 1");
+        surface.agentTypeID = UnityEngine.AI.NavMesh.GetSettingsByIndex(0).agentTypeID;
+        surface.collectObjects = Unity.AI.Navigation.CollectObjects.Children;
+        surface.layerMask = LayerMask.GetMask("Environment");
+        surface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
+        surface.defaultArea = UnityEngine.AI.NavMesh.GetAreaFromName("Walkable");
+        surface.BuildNavMesh();
+        if (surface.navMeshData == null || UnityEngine.AI.NavMesh.CalculateTriangulation().indices.Length == 0)
+            throw new System.InvalidOperationException("El Bake no produjo una malla transitable.");
+        const string folder = "Assets/Scenes/Maqueta Nivel 1";
+        if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets/Scenes", "Maqueta Nivel 1");
+        const string dataPath = folder + "/NavMesh_Level1.asset";
+        var previousData = AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(dataPath);
+        if (previousData == null) AssetDatabase.CreateAsset(surface.navMeshData, dataPath);
+        else
+        {
+            var baked = surface.navMeshData;
+            surface.RemoveData();
+            EditorUtility.CopySerialized(baked, previousData);
+            surface.navMeshData = previousData;
+            surface.AddData();
+            Object.DestroyImmediate(baked);
+            EditorUtility.SetDirty(previousData);
+        }
+        UnityEngine.AI.NavMeshHit hit;
+        if (!UnityEngine.AI.NavMesh.SamplePosition(new Vector3(0f, 0.5f, 38f), out hit, 1f, UnityEngine.AI.NavMesh.AllAreas))
+            throw new System.InvalidOperationException("Arena A no tiene NavMesh en su centro.");
+        EditorUtility.SetDirty(surface);
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"Entrega configurada: Player y dummy en Arena A, EnemyLayers={tagTeam.enemyLayers.value}, CollisionLayers={follow.collisionLayers.value}, suelos={groundCount}, triángulos NavMesh={UnityEngine.AI.NavMesh.CalculateTriangulation().indices.Length / 3}, datos={dataPath}.");
+    }
+
     private static Material ObtenerOMaterial(string nombre, Color colorBase)
     {
         string folder = "Assets/Materials/BlockoutColors";
