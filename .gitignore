@@ -73,3 +73,8 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Diagnósticos locales, logs de depuración y herramientas internas de editor
+.Aura/
+/[Aa]ssets/Scripts/Editor/AuraOps/
+/[Aa]ssets/Scripts/Editor/AuraOps.meta

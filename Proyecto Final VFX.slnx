@@ -26,6 +26,7 @@
   <Project Path="Unity.InferenceEngine.Tokenization.csproj" />
   <Project Path="Unity.VisualScripting.Core.csproj" />
   <Project Path="Unity.AI.Assistant.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.InferenceEngine.Editor.csproj" />
   <Project Path="Unity.AI.Pbr.csproj" />
   <Project Path="Unity.Burst.CodeGen.csproj" />
@@ -84,7 +85,6 @@
   <Project Path="Unity.InferenceEngine.Editor.Visualizer.csproj" />
   <Project Path="Unity.AI.Navigation.csproj" />
   <Project Path="Unity.Mathematics.Editor.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.CollabProxy.Editor.csproj" />
   <Project Path="Unity.AI.Assistant.Bridge.Editor.csproj" />
   <Project Path="Unity.AI.Generators.Sdk.csproj" />

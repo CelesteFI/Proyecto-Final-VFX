@@ -1,0 +1,253 @@
+using System;
+using UnityEngine;
+
+/// <summary>
+/// Gestor del sistema Tag-Team: conserva los datos de Caelen e Illya, arbitra el
+/// relevo ('1' / '2') y mantiene vidas independientes delegando la vitalidad en
+/// un único HealthComponent que se re-inicializa al cambiar de héroe.
+/// El combate vive en PlayerCombat (Assets/Scripts/Combat) para mantener el
+/// principio de responsabilidad única.
+/// </summary>
+[DisallowMultipleComponent]
+public class TagTeamManager : MonoBehaviour
+{
+    public static TagTeamManager Instance { get; private set; }
+
+    [Header("Perfiles de Personaje (GDD)")]
+    public HeroCombatData caelen = new HeroCombatData
+    {
+        heroName = "Caelen",
+        element = HeroCombatData.ElementType.Piedra,
+        maxHealth = 130f,
+        currentHealth = 130f,
+        moveSpeed = 6.5f,
+        attackDamage = 30f,
+        attackRange = 2.2f,
+        attackCooldown = 0.55f,
+        knockbackStrength = 9f,
+        attackImpulse = 0.40f
+    };
+
+    public HeroCombatData illya = new HeroCombatData
+    {
+        heroName = "Illya",
+        element = HeroCombatData.ElementType.Madera,
+        maxHealth = 95f,
+        currentHealth = 95f,
+        moveSpeed = 7.6f,
+        attackDamage = 18f,
+        attackRange = 3.5f,
+        attackCooldown = 0.30f, // cadencia 1.5x mayor que Caelen
+        knockbackStrength = 5.5f,
+        attackImpulse = 0.55f,
+        proxyColor = new Color(0.25f, 0.65f, 0.35f)
+    };
+
+    [Header("Estado")]
+    [SerializeField] private int activeHeroIndex = 0; // 0 = Caelen, 1 = Illya
+    [SerializeField] private bool illyaDesbloqueada = true;
+
+    [Header("Reaparición tras la Derrota")]
+    [Tooltip("Punto al que vuelve el héroe al pulsar 'R' cuando ambos han caído.")]
+    public Vector3 puntoReaparicion = new Vector3(0f, 0.8f, 0f);
+
+    public int ActiveHeroIndex => activeHeroIndex;
+    public bool IllyaDesbloqueada => illyaDesbloqueada;
+    public HeroCombatData ActiveHero => (activeHeroIndex == 0) ? caelen : illya;
+    public HeroCombatData HeroeInactivo => (activeHeroIndex == 0) ? illya : caelen;
+
+    /// <summary>Vitalidad del héroe activo (eventos observadores para el HUD).</summary>
+    public HealthComponent SaludHeroe => saludHeroe;
+
+    /// <summary>Se dispara al completar un relevo.</summary>
+    public event Action<HeroCombatData> OnHeroeCambiado;
+
+    /// <summary>Se dispara cuando cambia la vida del héroe activo.</summary>
+    public event Action<float, float> OnVidaHeroeCambiada;
+
+    /// <summary>Se dispara cuando Caelen e Illya han caído: derrota total.</summary>
+    public event Action OnAmbosCaidos;
+
+    /// <summary>Se dispara tras reaparecer y restaurar a ambos héroes.</summary>
+    public event Action OnReaparecido;
+
+    [Header("Puntos de Ataque e Hitbox")]
+    public Transform attackPoint;
+    public LayerMask enemyLayers;
+
+    [Header("Prefabs de VFX")]
+    public GameObject vfxSwapPrefab;
+    public GameObject vfxRockWallPrefab;
+    public GameObject vfxVinesAoEPrefab;
+
+    private MeshRenderer proxyRenderer;
+    private HealthComponent saludHeroe;
+    private PlayerInputReader entrada;
+
+    // 0 = Caelen, 1 = Illya. Marca qué héroes han caído en la partida actual.
+    private readonly bool[] caido = new bool[2];
+
+    /// <summary>True cuando los dos héroes están a 0 de vida.</summary>
+    public bool AmbosCaidos => caido[0] && caido[1];
+
+    /// <summary>Consulta si un héroe concreto ha caído.</summary>
+    public bool HeroeCaido(int indice) => indice >= 0 && indice < 2 && caido[indice];
+
+    private void Awake()
+    {
+        Instance = this;
+
+        proxyRenderer = GetComponentInChildren<MeshRenderer>();
+        entrada = GetComponent<PlayerInputReader>();
+        if (entrada == null) entrada = FindFirstObjectByType<PlayerInputReader>();
+
+        saludHeroe = GetComponent<HealthComponent>();
+        if (saludHeroe == null) saludHeroe = gameObject.AddComponent<HealthComponent>();
+
+        saludHeroe.OnHealthChanged += AlCambiarVidaHeroe;
+        saludHeroe.OnDied += AlMorirHeroeActivo;
+    }
+
+    private void OnDestroy()
+    {
+        if (saludHeroe != null)
+        {
+            saludHeroe.OnHealthChanged -= AlCambiarVidaHeroe;
+            saludHeroe.OnDied -= AlMorirHeroeActivo;
+        }
+        if (Instance == this) Instance = null;
+    }
+
+    private void Start()
+    {
+        // Inicializa la vitalidad del héroe que arranca la partida.
+        saludHeroe.Initialize(ActiveHero.maxHealth, ActiveHero.currentHealth);
+        ActualizarVisualProxy();
+    }
+
+    private void Update()
+    {
+        // 1. Relevo Tag-Team desde el lector central de Input System
+        int relevo = (entrada != null) ? entrada.RelevoSolicitado : -1;
+        if (relevo >= 0 && relevo != activeHeroIndex) IntentarRelevo(relevo);
+
+        // 2. Cooldowns de habilidad de ambos héroes (corren siempre, activos o no)
+        if (caelen.skillCooldownTimer > 0f) caelen.skillCooldownTimer -= Time.deltaTime;
+        if (illya.skillCooldownTimer > 0f) illya.skillCooldownTimer -= Time.deltaTime;
+    }
+
+    /// <summary>Valida y ejecuta el relevo de héroe.</summary>
+    public void IntentarRelevo(int nuevoIndice)
+    {
+        if (nuevoIndice == 1 && !illyaDesbloqueada)
+        {
+            Debug.Log("[TAG-TEAM] Illya permanece sellada en la celda del Árbol Sombrío.");
+            return;
+        }
+
+        CambiarHeroe(nuevoIndice);
+    }
+
+    /// <summary>Ejecuta el cambio de héroe manteniendo vidas independientes.</summary>
+    public void CambiarHeroe(int nuevoIndice)
+    {
+        if (nuevoIndice == activeHeroIndex) return;
+        if (nuevoIndice < 0 || nuevoIndice > 1) return;
+
+        activeHeroIndex = nuevoIndice;
+        HeroCombatData heroe = ActiveHero;
+
+        // El HealthComponent se re-inicializa con los valores propios del nuevo héroe.
+        saludHeroe.Initialize(heroe.maxHealth, heroe.currentHealth);
+        ActualizarVisualProxy();
+
+        Debug.Log($"[TAG-TEAM] Relevo a {heroe.heroName} ({heroe.element}). Vida: {heroe.currentHealth}/{heroe.maxHealth}");
+
+        if (CameraFollow.Instance != null) CameraFollow.Instance.TriggerScreenShake(0.12f, 0.15f);
+        if (vfxSwapPrefab != null) Instantiate(vfxSwapPrefab, transform.position, Quaternion.identity);
+
+        OnHeroeCambiado?.Invoke(heroe);
+    }
+
+    /// <summary>Reacciona a cambios de vida del héroe activo y los persiste en su perfil.</summary>
+    private void AlCambiarVidaHeroe(float actual, float maximo)
+    {
+        HeroCombatData heroe = ActiveHero;
+        if (heroe == null) return;
+
+        heroe.currentHealth = actual;
+        heroe.maxHealth = maximo;
+
+        OnVidaHeroeCambiada?.Invoke(actual, maximo);
+    }
+
+    // ------------------------------------------------------------------
+    // DERROTA Y REAPARICIÓN
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Un héroe ha llegado a 0 de vida. El GameObject del Player no se destruye
+    /// ni se desactiva: se releva automáticamente al héroe que siga en pie y,
+    /// si ambos han caído, se notifica la derrota total.
+    /// </summary>
+    private void AlMorirHeroeActivo()
+    {
+        caido[activeHeroIndex] = true;
+
+        int otro = 1 - activeHeroIndex;
+        bool otroEnPie = !caido[otro] && (otro == 0 ? caelen : illya).currentHealth > 0f;
+
+        if (otroEnPie)
+        {
+            Debug.Log($"[TAG-TEAM] {ActiveHero.heroName} ha caído; relevo automático a {(otro == 0 ? caelen : illya).heroName}.");
+            CambiarHeroe(otro);
+            return;
+        }
+
+        Debug.Log("[TAG-TEAM] Ambos héroes han caído. Esperando reinicio con 'R'.");
+        OnAmbosCaidos?.Invoke();
+    }
+
+    /// <summary>
+    /// Reaparición completa tras la derrota: devuelve a Caelen al frente con la
+    /// salud de ambos perfiles al 100 %. La reubicación física del Player la
+    /// realiza el gestor de derrota mediante PlayerController.Reubicar.
+    /// </summary>
+    public void Reaparecer()
+    {
+        caido[0] = false;
+        caido[1] = false;
+
+        caelen.currentHealth = caelen.maxHealth;
+        illya.currentHealth = illya.maxHealth;
+
+        activeHeroIndex = 0;
+        saludHeroe.Initialize(caelen.maxHealth, caelen.maxHealth);
+        ActualizarVisualProxy();
+
+        OnHeroeCambiado?.Invoke(ActiveHero);
+        OnReaparecido?.Invoke();
+
+        Debug.Log($"[TAG-TEAM] Reaparición completa: Caelen al frente con {caelen.currentHealth}/{caelen.maxHealth} de vida.");
+    }
+
+    private void ActualizarVisualProxy()
+    {
+        if (proxyRenderer != null) proxyRenderer.material.color = ActiveHero.proxyColor;
+    }
+
+    /// <summary>Desbloquea a Illya al completar el mini-puzle de rescate del Nivel 1.</summary>
+    public void DesbloquearIllya(bool desbloqueada)
+    {
+        illyaDesbloqueada = desbloqueada;
+        Debug.Log(desbloqueada
+            ? "[TAG-TEAM] Illya liberada: el relevo '2' queda habilitado."
+            : "[TAG-TEAM] Illya sellada: el relevo '2' queda deshabilitado.");
+    }
+
+    /// <summary>Asigna la capa de enemigos desde código si la escena no la define.</summary>
+    public void ConfigurarCapasDeDano(LayerMask capas)
+    {
+        enemyLayers = capas;
+    }
+}
