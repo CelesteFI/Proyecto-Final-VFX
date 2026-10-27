@@ -23,10 +23,14 @@ public class PlayerController : MonoBehaviour
     [Header("Dash")]
     public float dashDuration = 0.22f;
 
+    [Header("Enlaces (asignados en el Inspector)")]
+    [Tooltip("PlayerInputReader del mismo Player.")]
+    [SerializeField] private PlayerInputReader entrada;
+    [Tooltip("Transform de 'Main Camera'. Se asigna a mano, sin Camera.main.")]
+    [SerializeField] private Transform camTransform;
+
     private CharacterController controller;
-    private Transform camTransform;
     private TagTeamManager tagTeam;
-    private PlayerInputReader entrada;
 
     private Vector3 currentMoveVelocity;
     private float verticalVelocityY;
@@ -42,9 +46,7 @@ public class PlayerController : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         tagTeam = GetComponent<TagTeamManager>();
-        entrada = GetComponent<PlayerInputReader>();
-        if (entrada == null) entrada = FindFirstObjectByType<PlayerInputReader>();
-        if (Camera.main != null) camTransform = Camera.main.transform;
+        if (entrada == null) entrada = GetComponent<PlayerInputReader>();
     }
 
     private void Update()

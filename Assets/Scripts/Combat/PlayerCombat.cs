@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Módulo de combate del héroe activo. Se desacopla de TagTeamManager:
@@ -8,18 +9,19 @@ using UnityEngine;
 /// </summary>
 public class PlayerCombat : MonoBehaviour
 {
-    [Header("Enlaces")]
+    [Header("Enlaces (asignados en el Inspector)")]
     [SerializeField] private TagTeamManager tagTeam;
+    [SerializeField] private PlayerInputReader entrada;
     [SerializeField] private Transform attackPoint;
     [SerializeField] private LayerMask capasAfectadas = 1;
 
-    [Header("VFX de Impacto (opcional, se cargan de Resources si están vacíos)")]
+    [Header("VFX de Impacto y Habilidad (assets asignados en el Inspector)")]
     [SerializeField] private GameObject vfxImpactoPiedra;
     [SerializeField] private GameObject vfxImpactoMadera;
-
-    [Header("Habilidad: Muro de Basalto")]
     [SerializeField] private GameObject prefabMuroBasalto;
     [SerializeField] private float distanciaMuro = 2.5f;
+    [Tooltip("Radio del golpe de tierra que aplica el Muro de Basalto al emerger.")]
+    [SerializeField] private float radioGolpeMuro = 2.8f;
 
     [Header("Habilidad: Raíces Voraces")]
     [SerializeField] private GameObject prefabRaicesAoE;
@@ -30,7 +32,6 @@ public class PlayerCombat : MonoBehaviour
 
     public float CooldownAtaqueRestante => temporizadorAtaque;
 
-    private PlayerInputReader entrada;
     private CharacterController controlador;
     private float temporizadorAtaque;
 
@@ -40,22 +41,12 @@ public class PlayerCombat : MonoBehaviour
     private void Awake()
     {
         if (tagTeam == null) tagTeam = GetComponent<TagTeamManager>();
-        if (tagTeam == null) tagTeam = FindFirstObjectByType<TagTeamManager>();
-
-        entrada = GetComponent<PlayerInputReader>();
-        if (entrada == null) entrada = FindFirstObjectByType<PlayerInputReader>();
+        if (entrada == null) entrada = GetComponent<PlayerInputReader>();
 
         controlador = GetComponent<CharacterController>();
 
         if (attackPoint == null && tagTeam != null) attackPoint = tagTeam.attackPoint;
         if (capasAfectadas == 0) capasAfectadas = 1;
-
-        // Carga de recursos: permite que el prefab de impacto sea intercambiable
-        // sin volver a cablear la escena.
-        if (vfxImpactoPiedra == null) vfxImpactoPiedra = Resources.Load<GameObject>("VFX/VFX_Impacto_Piedra");
-        if (vfxImpactoMadera == null) vfxImpactoMadera = Resources.Load<GameObject>("VFX/VFX_Impacto_Madera");
-        if (prefabMuroBasalto == null && tagTeam != null) prefabMuroBasalto = tagTeam.vfxRockWallPrefab;
-        if (prefabMuroBasalto == null) prefabMuroBasalto = Resources.Load<GameObject>("VFX/Muro_Basalto_Habilidad");
     }
 
     private void Update()
@@ -64,8 +55,21 @@ public class PlayerCombat : MonoBehaviour
 
         if (temporizadorAtaque > 0f) temporizadorAtaque -= Time.deltaTime;
 
+        // Ninguna acción de combate se dispara con el puntero sobre la interfaz.
+        if (PunteroSobreUI()) return;
+
         if (entrada.AtaquePulsado && temporizadorAtaque <= 0f) EjecutarAtaqueBasico();
         if (entrada.HabilidadPulsada) EjecutarHabilidadElemental();
+    }
+
+    /// <summary>
+    /// Protección común del esquema de controles: el clic derecho (habilidad)
+    /// y el ataque básico quedan inertes mientras el puntero está sobre la UI.
+    /// </summary>
+    private static bool PunteroSobreUI()
+    {
+        EventSystem sistema = EventSystem.current;
+        return sistema != null && sistema.IsPointerOverGameObject();
     }
 
     // ------------------------------------------------------------------
@@ -80,6 +84,8 @@ public class PlayerCombat : MonoBehaviour
     /// </summary>
     public void EjecutarAtaqueBasico()
     {
+        if (PunteroSobreUI()) return;
+
         HeroCombatData heroe = tagTeam.ActiveHero;
         if (heroe == null) return;
 
@@ -166,6 +172,8 @@ public class PlayerCombat : MonoBehaviour
     /// <summary>Habilidad primaria: Muro de Basalto (Caelen) o Raíces Voraces (Illya).</summary>
     public void EjecutarHabilidadElemental()
     {
+        if (PunteroSobreUI()) return;
+
         HeroCombatData heroe = tagTeam.ActiveHero;
         if (heroe == null) return;
 
@@ -177,11 +185,11 @@ public class PlayerCombat : MonoBehaviour
 
         heroe.skillCooldownTimer = heroe.skillCooldown;
 
-        if (heroe.element == HeroCombatData.ElementType.Piedra) InvocarMuroBasalto();
+        if (heroe.element == HeroCombatData.ElementType.Piedra) InvocarMuroBasalto(heroe);
         else InvocarRaicesVoraces(heroe);
     }
 
-    private void InvocarMuroBasalto()
+    private void InvocarMuroBasalto(HeroCombatData heroe)
     {
         CameraFollow.Instance?.TriggerScreenShake(0.2f, 0.35f);
 
@@ -193,6 +201,10 @@ public class PlayerCombat : MonoBehaviour
 
         Vector3 posicion = transform.position + transform.forward * distanciaMuro;
         Instantiate(prefabMuroBasalto, posicion, transform.rotation);
+
+        // El muro emerge del suelo: el golpe de tierra daña lo que pilla delante.
+        GolpeEnArea(posicion, radioGolpeMuro, heroe.attackDamage * 1.5f, heroe);
+
         Debug.Log("[COMBATE] Caelen invocó el Muro de Basalto.");
     }
 
@@ -206,26 +218,44 @@ public class PlayerCombat : MonoBehaviour
             Destroy(raices, 3f);
         }
 
-        Collider[] hits = Physics.OverlapSphere(transform.position, radioRaices, capasAfectadas);
+        int alcanzados = GolpeEnArea(transform.position, radioRaices, danoRaices, heroe);
+
+        Debug.Log($"[COMBATE] Illya invocó Raíces Voraces sobre {alcanzados} objetivo(s) con anclaje de zarzas {duracionZarzas:F1}s.");
+    }
+
+    /// <summary>
+    /// Daño en área compartido por las dos habilidades: aplica IDamageable a
+    /// entidades y IGolpeableElemental a estructuras (raíces, tótems, celda).
+    /// Devuelve cuántas entidades con vida alcanzó.
+    /// </summary>
+    private int GolpeEnArea(Vector3 centro, float radio, float dano, HeroCombatData heroe)
+    {
+        Collider[] hits = Physics.OverlapSphere(centro, radio, capasAfectadas);
+        raicesProcesadas.Clear();
         int alcanzados = 0;
 
         for (int i = 0; i < hits.Length; i++)
         {
-            if (hits[i] == null || EsParteDelHeroe(hits[i].transform)) continue;
+            Collider col = hits[i];
+            if (col == null) continue;
+            if (EsParteDelHeroe(col.transform)) continue;
+            if (!raicesProcesadas.Add(col.transform.root.GetInstanceID())) continue;
 
-            IDamageable victima = hits[i].GetComponentInParent<IDamageable>();
+            IGolpeableElemental golpeable = col.GetComponentInParent<IGolpeableElemental>();
+            if (golpeable != null) golpeable.RecibirGolpeElemental(heroe.element, col.ClosestPoint(centro));
+
+            IDamageable victima = col.GetComponentInParent<IDamageable>();
             if (victima == null) continue;
 
-            // Anclaje de zarzas: inmoviliza al objetivo alcanzado.
-            EnemyAI ia = hits[i].GetComponentInParent<EnemyAI>();
+            EnemyAI ia = col.GetComponentInParent<EnemyAI>();
             if (ia != null) ia.AplicarInmovilizacion(duracionZarzas);
 
-            Vector3 direccion = (hits[i].transform.position - transform.position).normalized + Vector3.up * 0.2f;
-            victima.TakeDamage(danoRaices, hits[i].transform.position, direccion * heroe.knockbackStrength * 0.6f);
+            Vector3 direccion = (col.transform.position - centro).normalized + Vector3.up * 0.2f;
+            victima.TakeDamage(dano, col.transform.position, direccion * heroe.knockbackStrength * 0.6f);
             alcanzados++;
         }
 
-        Debug.Log($"[COMBATE] Illya invocó Raíces Voraces sobre {alcanzados} objetivo(s) con anclaje de zarzas {duracionZarzas:F1}s.");
+        return alcanzados;
     }
 
     private bool EsParteDelHeroe(Transform otro)

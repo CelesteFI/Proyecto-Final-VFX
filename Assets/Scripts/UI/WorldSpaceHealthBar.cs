@@ -17,6 +17,8 @@ public class WorldSpaceHealthBar : MonoBehaviour
     [SerializeField] private TextMeshProUGUI textoNombre;
     [SerializeField] private Slider barraVida;
     [SerializeField] private Image relleno;
+    [Tooltip("Image 'Fondo' de la barra. Se asigna en el Inspector.")]
+    [SerializeField] private Image fondoBarra;
 
     [Header("Colores de Arquetipo")]
     [SerializeField] private Color colorRelleno = new Color(0.78f, 0.12f, 0.12f, 1f);
@@ -33,11 +35,7 @@ public class WorldSpaceHealthBar : MonoBehaviour
         if (grupo == null) grupo = GetComponent<CanvasGroup>();
         if (textoNombre != null) textoNombre.text = nombreArquetipo;
         if (relleno != null) relleno.color = colorRelleno;
-
-        Image fondo = transform.Find("Fondo") != null
-            ? transform.Find("Fondo").GetComponent<Image>()
-            : null;
-        if (fondo != null) fondo.color = colorFondo;
+        if (fondoBarra != null) fondoBarra.color = colorFondo;
     }
 
     private void OnEnable()

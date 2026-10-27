@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -7,6 +8,18 @@ using UnityEngine.InputSystem;
 /// en lugar de consultar Keyboard.current / Mouse.current por su cuenta.
 /// Se ejecuta antes que el resto ([DefaultExecutionOrder]) para que los valores
 /// leídos en el frame estén disponibles para todos los consumidores.
+///
+/// Esquema de controles:
+///   WASD          movimiento
+///   Ratón X/Y     rotación de cámara (siempre activa salvo hover sobre UI)
+///   Q             ataque básico
+///   Clic derecho  ataque especial / habilidad
+///   Espacio       salto (nunca pausa)
+///   Shift         dash
+///   F             interactuar
+///   1 / 2         relevo Tag-Team
+///   Escape        pausa
+/// El clic izquierdo queda reservado a la interfaz y a la selección en el mundo.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 [DisallowMultipleComponent]
@@ -26,9 +39,9 @@ public class PlayerInputReader : MonoBehaviour
     public bool AtaquePulsado { get; private set; }
     public bool HabilidadPulsada { get; private set; }
     public bool InteraccionPulsada { get; private set; }
-    public bool AlternarRecursos { get; private set; }
-    public bool AlternarHabilidades { get; private set; }
-    public bool AlternarCursor { get; private set; }
+
+    /// <summary>Apertura del menú de pausa con 'Escape'. 'Espacio' no interviene.</summary>
+    public bool PausaPulsada { get; private set; }
 
     /// <summary>Reaparición tras la derrota de ambos héroes ('R').</summary>
     public bool ReinicioPulsado { get; private set; }
@@ -44,10 +57,18 @@ public class PlayerInputReader : MonoBehaviour
     public bool EntradaBloqueada { get; set; }
 
     /// <summary>
-    /// El cursor bloqueado indica "modo juego". Con el cursor libre el jugador
-    /// está interactuando con la UI, por lo que los botones de combate se ignoran.
+    /// True cuando el puntero está sobre un elemento de interfaz interactuable.
+    /// Se usa para que el clic derecho, la cámara y la interacción no se disparen
+    /// mientras se opera el HUD.
     /// </summary>
-    public bool EnModoJuego => Cursor.lockState == CursorLockMode.Locked;
+    public static bool PunteroSobreUI
+    {
+        get
+        {
+            EventSystem sistema = EventSystem.current;
+            return sistema != null && sistema.IsPointerOverGameObject();
+        }
+    }
 
     private void Awake()
     {
@@ -56,7 +77,9 @@ public class PlayerInputReader : MonoBehaviour
             Destroy(this);
             return;
         }
+
         Instance = this;
+        AsegurarCursorLibre();
     }
 
     private void OnDestroy()
@@ -67,6 +90,9 @@ public class PlayerInputReader : MonoBehaviour
     private void Update()
     {
         ReiniciarPulsaciones();
+
+        // El cursor nunca se bloquea: siempre libre y visible.
+        AsegurarCursorLibre();
 
         Keyboard teclado = Keyboard.current;
         Mouse raton = Mouse.current;
@@ -82,6 +108,7 @@ public class PlayerInputReader : MonoBehaviour
         ReinicioPulsado = teclado.rKey.wasPressedThisFrame;
 
         bool bloqueada = EntradaBloqueada;
+        bool sobreUI = PunteroSobreUI || UIModalWindow.HayModalAbierto;
 
         // ---- Eje de movimiento (WASD) ----
         float h = 0f;
@@ -95,9 +122,12 @@ public class PlayerInputReader : MonoBehaviour
         }
         movimiento = new Vector2(h, v).normalized;
 
-        // ---- Cámara orbital ----
-        deltaRaton = (raton != null && EnModoJuego) ? raton.delta.ReadValue() : Vector2.zero;
-        AlternarCursor = teclado.escapeKey.wasPressedThisFrame;
+        // ---- Cámara orbital: el ratón siempre alimenta el delta ----
+        // El bloqueo por hover sobre la UI lo aplica CameraFollow con la misma guarda.
+        deltaRaton = (raton != null) ? raton.delta.ReadValue() : Vector2.zero;
+
+        // ---- Menú de pausa: exclusivamente Escape ----
+        PausaPulsada = teclado.escapeKey.wasPressedThisFrame;
 
         // ---- Locomoción ----
         SaltoPulsado = !bloqueada && teclado.spaceKey.wasPressedThisFrame;
@@ -108,19 +138,21 @@ public class PlayerInputReader : MonoBehaviour
         if (teclado.digit2Key.wasPressedThisFrame) RelevoSolicitado = 1;
 
         // ---- Interacción de entorno ----
-        InteraccionPulsada = teclado.fKey.wasPressedThisFrame;
+        InteraccionPulsada = !sobreUI && teclado.fKey.wasPressedThisFrame;
 
-        // ---- Ventanas modales de HUD ----
-        AlternarRecursos = teclado.mKey.wasPressedThisFrame;
-        AlternarHabilidades = teclado.kKey.wasPressedThisFrame;
-
-        // ---- Combate (solo con el cursor bloqueado para no disparar al hacer clic en la UI) ----
-        if (EnModoJuego && !bloqueada)
+        // ---- Combate: Q = básico, clic derecho = especial. El clic izquierdo es solo UI ----
+        if (!bloqueada && !sobreUI)
         {
-            AtaquePulsado = raton != null && raton.leftButton.wasPressedThisFrame;
-            HabilidadPulsada = teclado.eKey.wasPressedThisFrame
-                               || (raton != null && raton.rightButton.wasPressedThisFrame);
+            AtaquePulsado = teclado.qKey.wasPressedThisFrame;
+            HabilidadPulsada = raton != null && raton.rightButton.wasPressedThisFrame;
         }
+    }
+
+    /// <summary>Fuerza el cursor libre y visible en cada frame.</summary>
+    private static void AsegurarCursorLibre()
+    {
+        if (Cursor.lockState != CursorLockMode.None) Cursor.lockState = CursorLockMode.None;
+        if (!Cursor.visible) Cursor.visible = true;
     }
 
     private void ReiniciarPulsaciones()
@@ -130,9 +162,7 @@ public class PlayerInputReader : MonoBehaviour
         AtaquePulsado = false;
         HabilidadPulsada = false;
         InteraccionPulsada = false;
-        AlternarRecursos = false;
-        AlternarHabilidades = false;
-        AlternarCursor = false;
+        PausaPulsada = false;
         ReinicioPulsado = false;
         RelevoSolicitado = -1;
     }

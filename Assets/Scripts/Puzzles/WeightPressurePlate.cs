@@ -74,7 +74,14 @@ public class WeightPressurePlate : MonoBehaviour
         {
             if (other.GetComponentInParent<TagTeamManager>() == null) return;
 
-            if (placaVinculada != null && placaVinculada.EstaEnergizada) Resolver();
+            // El héroe pisa la placa: el canal rúnico se enciende y arranca el
+            // contador de la ventana. La placa receptora comprueba después si el
+            // canal de su placa vinculada sigue energizado.
+            Energizar();
+
+            if (placaVinculada == null) return;
+
+            if (placaVinculada.EstaEnergizada) Resolver();
             else Debug.Log("[PUZZLE] La placa receptora se pisó sin el canal rúnico activo.");
         }
     }
@@ -87,6 +94,13 @@ public class WeightPressurePlate : MonoBehaviour
         temporizador = ventanaEnergia;
         PintarCanal(true);
         alEnergizar?.Invoke();
+
+        // Placa terminal (sin placa vinculada): su único desenlace posible es
+        // energizarse, así que ese es el momento de disparar 'alResolver'.
+        // No se marca 'resuelto' para que la placa pueda reutilizarse
+        // (tobera del viento del Nivel 2).
+        if (placaVinculada == null) alResolver?.Invoke();
+
         Debug.Log($"[PUZZLE] Canal rúnico energizado por {ventanaEnergia:F1}s.");
     }
 

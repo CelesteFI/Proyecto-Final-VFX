@@ -12,6 +12,10 @@ public class CeldaDeRescate : MonoBehaviour, IInteractuable
     [SerializeField] private string idLlaveRequerida = "LlaveDeZarzas";
     [SerializeField] private string prompt = "Liberar a Illya";
 
+    [Header("Requisito de Progreso")]
+    [Tooltip("Si está activo, la celda de raíces solo cede tras derrotar al jefe del Nivel 1.")]
+    [SerializeField] private bool requiereJefeDerrotado = false;
+
     [Header("Estado")]
     [SerializeField] private bool liberada;
 
@@ -22,8 +26,23 @@ public class CeldaDeRescate : MonoBehaviour, IInteractuable
     {
         if (liberada) return;
 
-        bool tieneLlave = GameProgressManager.Instance != null
-                          && GameProgressManager.Instance.EstaRecogido(idLlaveRequerida);
+        // Puzle 2 del Nivel 1: la celda de raíces corruptas solo cede cuando la
+        // bestia del altar ha caído. Sin ese hito la interacción no tiene efecto.
+        if (requiereJefeDerrotado)
+        {
+            bool jefeCaido = GameProgressManager.Instance != null
+                             && GameProgressManager.Instance.bossNivel1Derrotado;
+
+            if (!jefeCaido)
+            {
+                Debug.Log("[RESCATE] La celda de raíces sigue sellada: la bestia del altar respira todavía.");
+                return;
+            }
+        }
+
+        bool tieneLlave = string.IsNullOrEmpty(idLlaveRequerida)
+                          || (GameProgressManager.Instance != null
+                              && GameProgressManager.Instance.EstaRecogido(idLlaveRequerida));
 
         if (!tieneLlave)
         {
@@ -45,6 +64,18 @@ public class CeldaDeRescate : MonoBehaviour, IInteractuable
         puerta = puertaCelda;
         idLlaveRequerida = llave;
         prompt = textoPrompt;
+    }
+
+    /// <summary>Exige el hito de jefe derrotado antes de poder liberar a Illya.</summary>
+    public void ConfigurarRequisitoJefe(bool exigir)
+    {
+        requiereJefeDerrotado = exigir;
+    }
+
+    /// <summary>Marca la celda como ya liberada (restauración de partida guardada).</summary>
+    public void MarcarLiberada(bool valor)
+    {
+        liberada = valor;
     }
 
     /// <summary>Expuesto para pruebas automáticas.</summary>

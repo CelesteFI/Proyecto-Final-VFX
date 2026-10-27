@@ -14,8 +14,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class ZonaDeAbismo : MonoBehaviour
 {
-    [Header("Héroe (se autodetecta por el TagTeamManager)")]
-    [SerializeField] private Transform heroe;
+    [Header("Enlaces (asignados en el Inspector)")]
+    [Tooltip("TagTeamManager del Player. No se busca en runtime.")]
+    [SerializeField] private TagTeamManager tagTeam;
 
     [Header("Reaparición")]
     [Tooltip("Separación vertical sobre la última posición firme para evitar reaparecer dentro del suelo.")]
@@ -29,10 +30,19 @@ public class ZonaDeAbismo : MonoBehaviour
     [Tooltip("Distancia al borde que debe tener un punto para considerarse firme. Evita reaparecer al filo de la isla y volver a caer.")]
     [SerializeField] private float radioSeguro = 1.2f;
 
+    [Header("Daño por Caída")]
+    [Tooltip("Si está activo, cruzar el volumen aplica daño al héroe activo antes de devolverlo a tierra.")]
+    [SerializeField] private bool aplicarDano = false;
+
+    [Tooltip("Fracción de la vida máxima que resta la caída. El GDD pide un 25 %.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float porcentajeDano = 0.25f;
+
     /// <summary>Número de veces que el abismo ha devuelto al héroe (útil para depurar).</summary>
     public int Reapariciones { get; private set; }
 
     private CharacterController caracter;
+    private Transform transformHeroe;
     private Vector3 ultimaPosicionSegura;
     private float muestreo;
     private float enfriamientoRestante;
@@ -46,7 +56,7 @@ public class ZonaDeAbismo : MonoBehaviour
 
     private void Start()
     {
-        LocalizarHeroe();
+        ResolverHeroe();
     }
 
     private void Update()
@@ -55,7 +65,7 @@ public class ZonaDeAbismo : MonoBehaviour
 
         if (caracter == null)
         {
-            LocalizarHeroe();
+            ResolverHeroe();
             if (caracter == null) return;
         }
 
@@ -64,14 +74,14 @@ public class ZonaDeAbismo : MonoBehaviour
         muestreo = intervaloMuestreo;
 
         if (!caracter.isGrounded) return;
-        if (heroe.position.y < alturaMinimaSegura) return;
+        if (transformHeroe.position.y < alturaMinimaSegura) return;
 
         // Solo se memoriza suelo que se extiende al menos radioSeguro en las cuatro
         // direcciones: si se guardaba el filo de la isla, el rescate devolvía al
         // héroe al borde y volvía a caer, encadenando dos rescates por caída.
-        if (!EsPuntoFirme(heroe.position)) return;
+        if (!EsPuntoFirme(transformHeroe.position)) return;
 
-        ultimaPosicionSegura = heroe.position;
+        ultimaPosicionSegura = transformHeroe.position;
         tienePosicionSegura = true;
     }
 
@@ -103,6 +113,10 @@ public class ZonaDeAbismo : MonoBehaviour
     /// <summary>Devuelve al héroe a la última posición firme registrada.</summary>
     private void Reposicionar(CharacterController candidato)
     {
+        // La caída al abismo cuesta vida: si llega a 0 el Tag-Team releva al
+        // compañero y, si ambos caen, se abre 'Modal_Derrota'.
+        AplicarDanoDeCaida();
+
         Vector3 destino = tienePosicionSegura
             ? ultimaPosicionSegura + desplazamientoSeguro
             : new Vector3(0f, 2f, 0f);
@@ -131,18 +145,44 @@ public class ZonaDeAbismo : MonoBehaviour
         Debug.Log($"[ABISMO] Héroe devuelto a la última posición firme: {destino.ToString("F1")}");
     }
 
-    private void LocalizarHeroe()
+    /// <summary>
+    /// Aplica al héroe activo un porcentaje de su vida máxima. Se ejecuta antes
+    /// de la reubicación para que el relevo automático (si la vida llega a 0)
+    /// ocurra con el héroe todavía en el volumen de muerte.
+    /// </summary>
+    private void AplicarDanoDeCaida()
     {
-        TagTeamManager tag = FindAnyObjectByType<TagTeamManager>();
-        if (tag == null) return;
+        if (!aplicarDano || porcentajeDano <= 0f) return;
 
-        heroe = tag.transform;
-        caracter = tag.GetComponent<CharacterController>();
+        TagTeamManager tag = TagTeamManager.Instance;
+        if (tag == null || tag.SaludHeroe == null) return;
+        if (tag.SaludHeroe.EstaMuerto) return;
+
+        float dano = tag.SaludHeroe.MaxHealth * Mathf.Clamp01(porcentajeDano);
+        Vector3 punto = tag.transform.position + Vector3.up * 1f;
+
+        tag.SaludHeroe.ApplyDamage(dano, Vector3.zero, punto);
+        Debug.Log($"[ABISMO] Caída: {dano:F0} de daño ({porcentajeDano * 100f:F0} % de la vida máxima).");
+    }
+
+    private void ResolverHeroe()
+    {
+        if (tagTeam == null || transformHeroe != null) return;
+
+        transformHeroe = tagTeam.transform;
+        caracter = tagTeam.GetComponent<CharacterController>();
 
         if (caracter != null)
         {
-            ultimaPosicionSegura = heroe.position;
+            ultimaPosicionSegura = transformHeroe.position;
             tienePosicionSegura = true;
         }
+    }
+
+    /// <summary>Activa el daño de caída y su porcentaje desde el integrador de escena.</summary>
+    public void ConfigurarDanoDeCaida(bool activo, float porcentaje)
+    {
+        aplicarDano = activo;
+        porcentajeDano = Mathf.Clamp01(porcentaje);
     }
 }

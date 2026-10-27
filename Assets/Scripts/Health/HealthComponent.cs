@@ -115,6 +115,16 @@ public class HealthComponent : MonoBehaviour, IDamageable
         ApplyDamage(amount, knockbackForce, hitPoint);
     }
 
+    /// <summary>
+    /// Variante simplificada de la API: aplica daño sin retroceso. La usan los
+    /// enemigos al golpear al héroe, que se desplaza con CharacterController y
+    /// no admite impulsos de PhysX.
+    /// </summary>
+    public void TakeDamage(float amount)
+    {
+        ApplyDamage(amount, Vector3.zero, transform.position);
+    }
+
     /// <summary>Restaura la vida al máximo (reinicio de arena / reaparición).</summary>
     public void RestaurarVidaCompleta()
     {

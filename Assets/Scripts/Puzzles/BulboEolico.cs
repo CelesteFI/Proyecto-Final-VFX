@@ -8,7 +8,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class BulboEolico : MonoBehaviour, IGolpeableElemental
 {
-    [Header("Plataforma Temporal")]
+    [Header("Plataforma Temporal (asset asignado en el Inspector)")]
     [SerializeField] private GameObject prefabPlataforma;
     [Tooltip("Punto donde aparece la plataforma. Si está vacío se usa debajo del bulbo.")]
     [SerializeField] private Transform puntoPlataforma;
@@ -27,7 +27,6 @@ public class BulboEolico : MonoBehaviour, IGolpeableElemental
     private void Awake()
     {
         escalaBase = transform.localScale;
-        if (prefabPlataforma == null) prefabPlataforma = Resources.Load<GameObject>("VFX/Plataforma_Liana_Temporal");
     }
 
     private void Update()

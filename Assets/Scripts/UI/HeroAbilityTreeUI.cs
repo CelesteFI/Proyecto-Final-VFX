@@ -43,7 +43,7 @@ public class HeroAbilityTreeUI : MonoBehaviour
     [SerializeField] private int indiceInicial = 0;
 
     [Header("Vínculo con el Héroe Activo")]
-    [Tooltip("Si se deja vacío se busca el TagTeamManager de la escena.")]
+    [Tooltip("TagTeamManager de la escena. Se asigna en el Inspector.")]
     [SerializeField] private TagTeamManager tagTeam;
 
     /// <summary>Elemento del GDD que corresponde a cada héroe.</summary>
@@ -55,7 +55,6 @@ public class HeroAbilityTreeUI : MonoBehaviour
     {
         EnlazarBotones();
 
-        if (tagTeam == null) tagTeam = FindFirstObjectByType<TagTeamManager>();
         if (tagTeam != null) tagTeam.OnHeroeCambiado += RefrescarRamas;
 
         if (nodos.Count > 0)

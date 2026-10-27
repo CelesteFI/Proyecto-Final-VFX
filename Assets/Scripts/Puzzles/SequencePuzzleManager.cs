@@ -102,6 +102,21 @@ public class SequencePuzzleManager : MonoBehaviour
         ReiniciarSecuencia();
     }
 
+    /// <summary>
+    /// Abre la ventana de tiempo sin exigir un primer golpe: el monolito de
+    /// sincronización del Nivel 2 llama a este método al interactuar.
+    /// </summary>
+    public void ArmarSecuencia()
+    {
+        if (Resuelto) return;
+
+        secuenciaActiva = true;
+        temporizador = tiempoLimite;
+        indiceActual = 0;
+
+        Debug.Log($"[PUZZLE] Secuencia armada: {tiempoLimite:F0}s para encender los {secuencia.Count} elementos.");
+    }
+
     /// <summary>Apaga todos los elementos y limpia el progreso temporal.</summary>
     public void ReiniciarSecuencia()
     {

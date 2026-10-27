@@ -20,8 +20,12 @@ public class EnemyAI : MonoBehaviour
     public Arquetipo arquetipo = Arquetipo.FaunaCorrupta;
     public string nombreVisible = "Fauna Corrupta";
 
+    [Header("Enlaces (asignados en el Inspector)")]
+    [Tooltip("TagTeamManager de la escena. Obligatorio: la IA no hace búsquedas en runtime.")]
+    [SerializeField] private TagTeamManager tagTeam;
+
     [Header("Objetivo")]
-    [Tooltip("Si se deja vacío se usa automáticamente al héroe activo del Tag-Team.")]
+    [Tooltip("Si se deja vacío se usa el TagTeamManager asignado arriba.")]
     public Transform objetivo;
     public float rangoDeteccion = 14f;
 
@@ -31,6 +35,16 @@ public class EnemyAI : MonoBehaviour
     public float cooldownAtaque = 1.4f;
     public float danoAtaque = 12f;
     public float fuerzaRetrocesoAlHeroe = 4f;
+
+    [Header("Hitbox de Ataque (daño al héroe)")]
+    [Tooltip("Capas que el golpe puede dañar. Debe incluir 'Player' (índice 8).")]
+    public LayerMask capasGolpe = 1 << 8;
+
+    [Tooltip("Radio de la esfera de daño. Debe cubrir el alcance del golpe menos el radio del héroe.")]
+    public float radioHitbox = 2.2f;
+
+    [Tooltip("Altura del centro de la hitbox sobre la base del enemigo.")]
+    public float alturaHitbox = 1f;
 
     [Header("Patrulla")]
     public float radioPatrulla = 6f;
@@ -46,6 +60,12 @@ public class EnemyAI : MonoBehaviour
     [Tooltip("Radio de la arena de combate usada por los minijefes como leash.")]
     public float radioArena = 14f;
 
+    [Tooltip("Si está desactivado, la IA nunca rompe el agro por distancia (jefes de arena y Guardianes).")]
+    public bool usarLeash = true;
+
+    [Tooltip("Si está desactivado, el enemigo no recupera vida al volver a su guardia: el daño es definitivo.")]
+    public bool regeneraAlRegresar = true;
+
     [Header("Sincronización NavMesh / PhysX")]
     public float duracionAturdimiento = 0.28f;
 
@@ -58,7 +78,6 @@ public class EnemyAI : MonoBehaviour
     private NavMeshAgent agente;
     private HealthComponent salud;
     private Rigidbody cuerpoRigido;
-    private TagTeamManager tagTeam;
 
     private Estado estado = Estado.Inactivo;
     private Vector3 origenPatrulla;
@@ -79,7 +98,6 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
-        tagTeam = FindFirstObjectByType<TagTeamManager>();
         if (objetivo == null && tagTeam != null) objetivo = tagTeam.transform;
 
         AplicarLimitesPorArquetipo();
@@ -133,7 +151,7 @@ public class EnemyAI : MonoBehaviour
 
         // Ruptura de agro al salir de la zona de guardia (leash distance).
         float distanciaOrigen = Vector3.Distance(transform.position, origenPatrulla);
-        if (distanciaOrigen > radioPersecucionMaximo &&
+        if (usarLeash && distanciaOrigen > radioPersecucionMaximo &&
             (estado == Estado.Persecucion || estado == Estado.Ataque))
         {
             IniciarRegreso();
@@ -260,7 +278,7 @@ public class EnemyAI : MonoBehaviour
         if (NavMesh.SamplePosition(origenPatrulla, out NavMeshHit punto, 2f, NavMesh.AllAreas))
             agente.Warp(punto.position);
 
-        if (salud != null) salud.RestaurarVidaCompleta();
+        if (regeneraAlRegresar && salud != null) salud.RestaurarVidaCompleta();
 
         CambiarEstado(Estado.Patrulla);
     }
@@ -290,19 +308,57 @@ public class EnemyAI : MonoBehaviour
         ataqueEnCurso = false;
     }
 
+    /// <summary>
+    /// Golpe cuerpo a cuerpo del enemigo. La hitbox es una esfera explícita sobre
+    /// la capa 'Player': solo daña colliders cuyo padre tenga CharacterController
+    /// o HealthComponent, de modo que el héroe activo reciba el daño real.
+    /// </summary>
     private void EjecutarGolpe()
     {
-        HealthComponent saludHeroe = (tagTeam != null) ? tagTeam.SaludHeroe : null;
+        Vector3 centro = transform.position + Vector3.up * alturaHitbox;
+        Collider[] impactos = Physics.OverlapSphere(centro, radioHitbox, capasGolpe, QueryTriggerInteraction.Ignore);
 
-        if (saludHeroe == null || saludHeroe.EstaMuerto) return;
+        HealthComponent saludImpactada = null;
 
-        Vector3 direccion = (objetivo.position - transform.position).normalized;
-        Vector3 fuerza = direccion * fuerzaRetrocesoAlHeroe + Vector3.up * 0.6f;
-        Vector3 punto = objetivo.position + Vector3.up * 1f;
+        for (int i = 0; i < impactos.Length; i++)
+        {
+            Collider col = impactos[i];
+            if (col == null) continue;
 
-        saludHeroe.ApplyDamage(danoAtaque, fuerza, punto);
+            // Nunca se golpea a sí mismo ni a su propia jerarquía.
+            if (col.transform.root == transform.root) continue;
+
+            HealthComponent saludCandidata = col.GetComponentInParent<HealthComponent>();
+            if (saludCandidata == null) continue;
+
+            bool esHeroe = col.GetComponentInParent<CharacterController>() != null ||
+                           col.gameObject.layer == LayerMask.NameToLayer("Player");
+
+            if (!esHeroe) continue;
+
+            saludImpactada = saludCandidata;
+            break;
+        }
+
+        // Respaldo: si la esfera no alcanzó el collider del héroe, se usa el
+        // HealthComponent del Tag-Team siempre que siga dentro del alcance.
+        if (saludImpactada == null && tagTeam != null && objetivo != null)
+        {
+            float distanciaHeroe = Vector3.Distance(transform.position, objetivo.position);
+            if (distanciaHeroe <= rangoAtaque * 1.35f) saludImpactada = tagTeam.SaludHeroe;
+        }
+
+        if (saludImpactada == null || saludImpactada.EstaMuerto) return;
+
+        float vidaAntes = saludImpactada.CurrentHealth;
+
+        // Daño directo al componente de vida del héroe activo.
+        saludImpactada.TakeDamage(danoAtaque);
 
         if (CameraFollow.Instance != null) CameraFollow.Instance.TriggerScreenShake(0.12f, 0.12f);
+
+        Debug.Log($"[IA] {nombreVisible} golpeó al héroe por {danoAtaque:F0} de daño. " +
+                  $"Vida: {vidaAntes:F0} -> {saludImpactada.CurrentHealth:F0}/{saludImpactada.MaxHealth:F0}.");
     }
 
     // ------------------------------------------------------------------
@@ -419,11 +475,28 @@ public class EnemyAI : MonoBehaviour
                 break;
 
             case Arquetipo.BestiaPiedraVoraz:
-            case Arquetipo.GuardianCeleste:
                 confinadoAArena = true;
                 radioPersecucionMaximo = radioArena;
                 break;
+
+            case Arquetipo.GuardianCeleste:
+                // El Guardián Celeste no tiene leash ni reinicio por distancia, y
+                // una vez dañado no recupera salud (GDD del Nivel 2).
+                confinadoAArena = true;
+                radioPersecucionMaximo = radioArena;
+                usarLeash = false;
+                regeneraAlRegresar = false;
+                break;
         }
+    }
+
+    /// <summary>Expone el radio de guardia para el integrador de escena.</summary>
+    public void ConfigurarGuardia(float radioPersecucion, float radioArenaCombate, bool leash, bool regenera)
+    {
+        radioPersecucionMaximo = radioPersecucion;
+        radioArena = radioArenaCombate;
+        usarLeash = leash;
+        regeneraAlRegresar = regenera;
     }
 
     /// <summary>Cancela el ataque en curso y ordena volver caminando al punto de guardia.</summary>
@@ -533,7 +606,6 @@ public class EnemyAI : MonoBehaviour
 
     private void ResolverObjetivo()
     {
-        if (tagTeam == null) tagTeam = FindFirstObjectByType<TagTeamManager>();
         if (tagTeam != null) objetivo = tagTeam.transform;
     }
 

@@ -47,18 +47,17 @@ public class FSM : MonoBehaviour
     private float dashTimer = 0f;
     private Vector3 dashDirection;
 
+    [Header("Cámara")]
+    [Tooltip("Transform de 'Main Camera'. Se asigna en el Inspector, sin Camera.main.")]
+    [SerializeField] private Transform camTransform;
+
     private CharacterController controller;
-    private Transform camTransform;
     private float turnSmoothVelocity;
     private Vector3 verticalVelocity;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        if (Camera.main != null)
-        {
-            camTransform = Camera.main.transform;
-        }
     }
 
     void Update()

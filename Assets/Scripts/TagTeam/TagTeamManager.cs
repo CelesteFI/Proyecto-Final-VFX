@@ -68,6 +68,12 @@ public class TagTeamManager : MonoBehaviour
     /// <summary>Se dispara cuando Caelen e Illya han caído: derrota total.</summary>
     public event Action OnAmbosCaidos;
 
+    /// <summary>
+    /// Se dispara cuando cae Caelen y 'Player_Illya' todavía no ha sido rescatada:
+    /// no hay relevo posible, así que la partida termina ahí.
+    /// </summary>
+    public event Action OnDerrotaSinIllya;
+
     /// <summary>Se dispara tras reaparecer y restaurar a ambos héroes.</summary>
     public event Action OnReaparecido;
 
@@ -80,9 +86,24 @@ public class TagTeamManager : MonoBehaviour
     public GameObject vfxRockWallPrefab;
     public GameObject vfxVinesAoEPrefab;
 
-    private MeshRenderer proxyRenderer;
+    [Header("Enchufes Visuales (Reemplazo Manual de Modelo)")]
+    [Tooltip("Contenedor 'Player_Caelen' dentro de Visual_Model: arrastra aquí el FBX final.")]
+    [SerializeField] private GameObject socketCaelen;
+
+    [Tooltip("Contenedor 'Player_Illya' dentro de Visual_Model: arrastra aquí el FBX final.")]
+    [SerializeField] private GameObject socketIllya;
+
+    [Tooltip("MeshRenderer de la cápsula temporal de Caelen (Capsule_Placeholder).")]
+    [SerializeField] private MeshRenderer proxyRenderer;
+
+    [Tooltip("MeshRenderer de la cápsula temporal de Illya (Capsule_Placeholder).")]
+    [SerializeField] private MeshRenderer proxyRendererIllya;
+
+    [Header("Enlaces (asignados en el Inspector)")]
+    [Tooltip("PlayerInputReader del mismo Player. No se busca en runtime.")]
+    [SerializeField] private PlayerInputReader entrada;
+
     private HealthComponent saludHeroe;
-    private PlayerInputReader entrada;
 
     // 0 = Caelen, 1 = Illya. Marca qué héroes han caído en la partida actual.
     private readonly bool[] caido = new bool[2];
@@ -97,9 +118,8 @@ public class TagTeamManager : MonoBehaviour
     {
         Instance = this;
 
-        proxyRenderer = GetComponentInChildren<MeshRenderer>();
-        entrada = GetComponent<PlayerInputReader>();
-        if (entrada == null) entrada = FindFirstObjectByType<PlayerInputReader>();
+        if (proxyRenderer == null) proxyRenderer = GetComponentInChildren<MeshRenderer>();
+        if (entrada == null) entrada = GetComponent<PlayerInputReader>();
 
         saludHeroe = GetComponent<HealthComponent>();
         if (saludHeroe == null) saludHeroe = gameObject.AddComponent<HealthComponent>();
@@ -123,6 +143,15 @@ public class TagTeamManager : MonoBehaviour
         // Inicializa la vitalidad del héroe que arranca la partida.
         saludHeroe.Initialize(ActiveHero.maxHealth, ActiveHero.currentHealth);
         ActualizarVisualProxy();
+
+        // La maqueta es la fuente de verdad del estado inicial: el Nivel 1 arranca
+        // con Illya sellada y el Nivel 2 con Illya ya libre. Se sincroniza el
+        // progreso global para que el HUD y el porcentaje no queden desfasados.
+        if (GameProgressManager.Instance != null
+            && GameProgressManager.Instance.illyaDesbloqueada != illyaDesbloqueada)
+        {
+            GameProgressManager.Instance.DesbloquearIllya(illyaDesbloqueada);
+        }
     }
 
     private void Update()
@@ -195,12 +224,24 @@ public class TagTeamManager : MonoBehaviour
         caido[activeHeroIndex] = true;
 
         int otro = 1 - activeHeroIndex;
-        bool otroEnPie = !caido[otro] && (otro == 0 ? caelen : illya).currentHealth > 0f;
+        HeroCombatData otroHeroe = (otro == 0) ? caelen : illya;
+
+        // Illya solo puede relevar si ya fue rescatada de la celda del Nivel 1.
+        bool otroHabilitado = (otro == 0) || illyaDesbloqueada;
+        bool otroEnPie = otroHabilitado && !caido[otro] && otroHeroe.currentHealth > 0f;
 
         if (otroEnPie)
         {
-            Debug.Log($"[TAG-TEAM] {ActiveHero.heroName} ha caído; relevo automático a {(otro == 0 ? caelen : illya).heroName}.");
+            Debug.Log($"[TAG-TEAM] {ActiveHero.heroName} ha caído; relevo automático a {otroHeroe.heroName}.");
             CambiarHeroe(otro);
+            return;
+        }
+
+        // Caelen ha caído con Illya todavía sellada: no se cambia de personaje.
+        if (activeHeroIndex == 0 && !illyaDesbloqueada)
+        {
+            Debug.Log("[TAG-TEAM] Caelen ha caído e Illya sigue sellada: derrota sin relevo.");
+            OnDerrotaSinIllya?.Invoke();
             return;
         }
 
@@ -231,15 +272,41 @@ public class TagTeamManager : MonoBehaviour
         Debug.Log($"[TAG-TEAM] Reaparición completa: Caelen al frente con {caelen.currentHealth}/{caelen.maxHealth} de vida.");
     }
 
+    /// <summary>
+    /// Conmuta los enchufes visuales de cada héroe y tiñe la cápsula del activo.
+    /// El modelo final (FBX) se arrastra dentro del enchufe sin tocar este código:
+    /// basta con apagar su 'Capsule_Placeholder'.
+    /// </summary>
     private void ActualizarVisualProxy()
     {
-        if (proxyRenderer != null) proxyRenderer.material.color = ActiveHero.proxyColor;
+        bool caelenActivo = activeHeroIndex == 0;
+
+        if (socketCaelen != null && socketCaelen.activeSelf != caelenActivo)
+            socketCaelen.SetActive(caelenActivo);
+
+        if (socketIllya != null && socketIllya.activeSelf != !caelenActivo)
+            socketIllya.SetActive(!caelenActivo);
+
+        MeshRenderer destino = caelenActivo
+            ? proxyRenderer
+            : ((proxyRendererIllya != null) ? proxyRendererIllya : proxyRenderer);
+
+        if (destino != null) destino.material.color = ActiveHero.proxyColor;
     }
 
     /// <summary>Desbloquea a Illya al completar el mini-puzle de rescate del Nivel 1.</summary>
     public void DesbloquearIllya(bool desbloqueada)
     {
         illyaDesbloqueada = desbloqueada;
+        GameSaveState.IllyaDesbloqueada = desbloqueada;
+
+        if (GameProgressManager.Instance != null) GameProgressManager.Instance.DesbloquearIllya(desbloqueada);
+
+        // El selector pentagrama solo se repinta con OnHeroeCambiado; se publica
+        // aquí para que la ranura de Illya se ilumine en el mismo frame en que
+        // se libera, sin esperar a un relevo.
+        OnHeroeCambiado?.Invoke(ActiveHero);
+
         Debug.Log(desbloqueada
             ? "[TAG-TEAM] Illya liberada: el relevo '2' queda habilitado."
             : "[TAG-TEAM] Illya sellada: el relevo '2' queda deshabilitado.");

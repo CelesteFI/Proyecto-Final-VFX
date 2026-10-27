@@ -304,7 +304,9 @@ public class Level1BlockoutBuilder : EditorWindow
         tagTeam.illya.currentHealth = tagTeam.illya.maxHealth;
         tagTeam.illya.proxyColor = new Color(0.25f, 0.65f, 0.35f);
         follow.target = player.transform;
-        follow.targetOffset = new Vector3(0f, 1.6f, 0f);
+        follow.targetOffset = new Vector3(0f, 1.8f, 0f);
+        follow.pivoteMirada = new Vector3(0f, 1.3f, 0f);
+        follow.defaultDistance = 4.5f;
         follow.collisionLayers = LayerMask.GetMask("Default", "Environment");
         follow.mouseSensitivity = 0.12f;
 

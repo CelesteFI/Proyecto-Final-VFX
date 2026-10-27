@@ -17,10 +17,13 @@ public class RafagaViento : MonoBehaviour
     [SerializeField] private float fuerza = 5.5f;
     [SerializeField] private float radioBloqueoMuro = 7f;
 
+    [Header("Enlaces (asignados en el Inspector)")]
+    [Tooltip("PlayerController del héroe. No se busca en runtime.")]
+    [SerializeField] private PlayerController jugador;
+
     public bool Soplando { get; private set; }
 
     private float temporizador;
-    private PlayerController jugador;
     private Collider zona;
 
     private void Awake()
@@ -43,7 +46,6 @@ public class RafagaViento : MonoBehaviour
         if (!Soplando) return;
         if (HayMuroDeTrinchera()) return;
 
-        if (jugador == null) jugador = FindFirstObjectByType<PlayerController>();
         if (jugador == null) return;
 
         if (!DentroDeLaZona(jugador.transform.position)) return;
