@@ -65,6 +65,10 @@ PrefabInstance:
       value: ArbolMuerto
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 77ee397a84a323e4f8be781fdf142a12, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 77ee397a84a323e4f8be781fdf142a12, type: 3}
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}

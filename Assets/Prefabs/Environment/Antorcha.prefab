@@ -53,6 +53,10 @@ PrefabInstance:
       value: Antorcha
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 53e01860232083b4e9f951d2d6b85da6, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 53e01860232083b4e9f951d2d6b85da6, type: 3}
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
