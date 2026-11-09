@@ -27,6 +27,14 @@
       },
       "hash": "406a8d058db2ec1708d4c4087deea334f7a92aa0"
     },
+    "com.ramenvr.autopilot": {
+      "version": "file:com.ramenvr.autopilot-1.0.1.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.unity.nuget.mono-cecil": "1.11.6"
+      }
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 1,
