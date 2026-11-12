@@ -90,7 +90,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RoughnessMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 40f266c747838694eaec3bc40036da47, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
@@ -119,14 +119,14 @@ Material:
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
-    - _CorruptionSpread: 0.41
+    - _CorruptionSpread: 0.42
     - _Cull: 2
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _DstBlendAlpha: 0
-    - _EdgeWidth: 0.136
+    - _EdgeWidth: 0.07
     - _EnvironmentReflections: 1
     - _GlossMapScale: 0
     - _Glossiness: 0
@@ -134,13 +134,13 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
-    - _PulseSpeed: 0.5
+    - _PulseSpeed: 3
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
-    - _Smothness: 0.41
+    - _Smothness: 0.243
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
@@ -149,10 +149,10 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 0.4528302, g: 0.060201146, b: 0.044855822, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _CorruptionColor: {r: 0.69446874, g: 0.16794233, b: 0.9622642, a: 0}
-    - _EmissionColor: {r: 0.40924853, g: 0.04134998, b: 0.79692686, a: 1}
+    - _CorruptionColor: {r: 0.5454679, g: 0, b: 0.7169812, a: 1}
+    - _EmissionColor: {r: 1.509434, g: 0.049839832, b: 1.4300001, a: 1}
     - _NoiseTilling: {r: 3, g: 3, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []

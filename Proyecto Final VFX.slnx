@@ -4,6 +4,7 @@
   <Project Path="Unity.PlasticSCM.Editor.csproj" />
   <Project Path="Unity.AppUI.csproj" />
   <Project Path="Unity.ProBuilder.csproj" />
+  <Project Path="Autopilot.Playtest.csproj" />
   <Project Path="Unity.Mathematics.csproj" />
   <Project Path="Unity.InferenceEngine.Microsoft.Msagl.csproj" />
   <Project Path="Unity.VisualScripting.Core.Editor.csproj" />
@@ -68,6 +69,7 @@
   <Project Path="Unity.AI.Generators.Asset.csproj" />
   <Project Path="Unity.AI.Toolkit.Asset.csproj" />
   <Project Path="Unity.Collections.CodeGen.csproj" />
+  <Project Path="Autopilot.Playtest.Editor.csproj" />
   <Project Path="Unity.ProBuilder.Poly2Tri.csproj" />
   <Project Path="Unity.AI.Assistant.AssetGenerators.Editor.csproj" />
   <Project Path="MCPForUnity.Runtime.csproj" />
@@ -107,6 +109,7 @@
   <Project Path="Unity.AI.Toolkit.GenerationObjectPicker.csproj" />
   <Project Path="Unity.AI.Toolkit.Compliance.csproj" />
   <Project Path="Unity.ProBuilder.AddOns.Editor.csproj" />
+  <Project Path="Unity.Autopilot.Playtest.CodeGen.csproj" />
   <Project Path="Unity.AI.MCP.Runtime.csproj" />
   <Project Path="Unity.InputSystem.ForUI.Editor.csproj" />
   <Project Path="Unity.InferenceEngine.MacBLAS.csproj" />
