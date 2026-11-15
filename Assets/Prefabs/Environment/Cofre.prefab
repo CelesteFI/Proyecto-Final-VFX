@@ -297,7 +297,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 13
+  m_VersionIndex: 19
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -521,6 +521,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 2223639932434330405, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+      propertyPath: m_WrapMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2223639932434330405, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+      propertyPath: m_PlayAutomatically
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4923576728553746189, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.03
@@ -563,6 +571,12 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 4690390609310268204}
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5351061137693113216}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5938396918515934192}
     - targetCorrespondingSourceObject: {fileID: -347236315190676296, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 905590688777532551}
@@ -597,9 +611,65 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -7269173089721441667, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+--- !u!1 &5027988350017521842 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+  m_PrefabInstance: {fileID: 5262008741558351331}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &5351061137693113216
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5027988350017521842}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 6.199542, y: 2.8219059, z: 6.199542}
+  m_Center: {x: 0, y: -1.179047, z: 0.917923}
+--- !u!114 &5938396918515934192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5027988350017521842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7d90cb4cc7fc2043abeb8c337647314, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CofreRecompensa
+  bannerInstrucciones: {fileID: 0}
+  textoInstruccion: {fileID: 0}
+  mensajeEntrada: Presiona [F] para abrir
+  entrada: {fileID: 0}
+  animacionCofre: {fileID: 6331390024160560838}
+  nombreClipApertura: CofreAbrir
+  halo: {fileID: 8936626183747965377}
+  propiedadIntensidad: _Intensity
+  intensidadMaxima: 1
+  duracionPulso: 1.5
+  barreraSello: {fileID: 0}
+  jugadorDentro: 0
+  abierto: 0
 --- !u!4 &5660128008118768136 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
+  m_PrefabInstance: {fileID: 5262008741558351331}
+  m_PrefabAsset: {fileID: 0}
+--- !u!111 &6331390024160560838 stripped
+Animation:
+  m_CorrespondingSourceObject: {fileID: 2223639932434330405, guid: 2ab3a2782d8cb5f44aeefbb0bc883ef0, type: 3}
   m_PrefabInstance: {fileID: 5262008741558351331}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &6673007052621010041 stripped
