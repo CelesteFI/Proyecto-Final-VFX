@@ -1,0 +1,757 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1540482175362510247
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6650536742320975664}
+  m_Layer: 8
+  m_Name: Indicador_Frontal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6650536742320975664
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1540482175362510247}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 3.5093815, z: 1.5597252}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6089600547121963249}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5256364148343968642
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4097864804492274661}
+  m_Layer: 8
+  m_Name: AttackPoint_Caelen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4097864804492274661
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5256364148343968642}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.2406756, y: 2.6, z: -0.094815016}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5228164222210930394}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5289481901777137628
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5628198918665635780}
+  m_Layer: 0
+  m_Name: Visual_Model
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5628198918665635780
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5289481901777137628}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5228164222210930394}
+  - {fileID: 5732139535043655134}
+  m_Father: {fileID: 6089600547121963249}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5887032739131589296
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5228164222210930394}
+  - component: {fileID: 4230439293471003387}
+  - component: {fileID: 1935209039031432441}
+  m_Layer: 0
+  m_Name: Player_Caelen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5228164222210930394
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5887032739131589296}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6205689909200805139}
+  - {fileID: 4097864804492274661}
+  - {fileID: 4793206058545012236}
+  m_Father: {fileID: 5628198918665635780}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!95 &4230439293471003387
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5887032739131589296}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: de3d20c07d9f19a4f9d1a9a07885489c, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1935209039031432441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5887032739131589296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c79e29de08995449b63dd8d9e92878b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HeroVisualAnimator
+  animador: {fileID: 71818739722356585}
+  controlador: {fileID: 1229712696885770486}
+  locomocion: {fileID: 8768611033337255849}
+  combate: {fileID: 3874890468758300389}
+  salud: {fileID: 6463756822411696705}
+  velocidadMaxima: 6.5
+  umbralSalto: 1.5
+  umbralCaida: -1.5
+--- !u!1 &5991090956165451934
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5732139535043655134}
+  - component: {fileID: 245073977294030185}
+  - component: {fileID: 5359229713791603351}
+  m_Layer: 0
+  m_Name: Player_Illya
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &5732139535043655134
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5991090956165451934}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6917569735972514077}
+  - {fileID: 7885593373778962726}
+  - {fileID: 7025371042524700832}
+  m_Father: {fileID: 5628198918665635780}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!95 &245073977294030185
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5991090956165451934}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 08ad9b67b7246ae48b2b9aea559918c3, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5359229713791603351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5991090956165451934}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c79e29de08995449b63dd8d9e92878b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HeroVisualAnimator
+  animador: {fileID: 3954171273078092647}
+  controlador: {fileID: 1229712696885770486}
+  locomocion: {fileID: 8768611033337255849}
+  combate: {fileID: 3874890468758300389}
+  salud: {fileID: 6463756822411696705}
+  velocidadMaxima: 7.6
+  umbralSalto: 1.5
+  umbralCaida: -1.5
+--- !u!1 &6236408610559290669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4793206058545012236}
+  m_Layer: 8
+  m_Name: SpecialAttackPoint_Caelen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4793206058545012236
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6236408610559290669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5228164222210930394}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7480054014661737146
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7885593373778962726}
+  m_Layer: 8
+  m_Name: AttackPoint_Illya
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7885593373778962726
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7480054014661737146}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.75910926, y: 2.8, z: 1.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5732139535043655134}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7651648849186339520
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6089600547121963249}
+  - component: {fileID: 1229712696885770486}
+  - component: {fileID: 8768611033337255849}
+  - component: {fileID: 4660510737258863481}
+  - component: {fileID: 5554199016541479552}
+  - component: {fileID: 3165894951143603256}
+  - component: {fileID: 6463756822411696705}
+  - component: {fileID: 3874890468758300389}
+  - component: {fileID: 3139928701410646757}
+  m_Layer: 8
+  m_Name: Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6089600547121963249
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.5, z: -3.68}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6650536742320975664}
+  - {fileID: 5628198918665635780}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!143 &1229712696885770486
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 5.069107
+  m_Radius: 1.299771
+  m_SlopeLimit: 45
+  m_StepOffset: 0.7798626
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 2.5345535, z: 0}
+--- !u!114 &8768611033337255849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8957b869dc760414d8e40b021213b1ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  acceleration: 14
+  deceleration: 18
+  rotationSmoothTime: 0.08
+  jumpHeight: 2
+  gravity: -20
+  fallMultiplier: 1.8
+  coyoteTime: 0.15
+  jumpBufferTime: 0.12
+  dashDuration: 0.22
+  entrada: {fileID: 5554199016541479552}
+  camTransform: {fileID: 0}
+--- !u!114 &4660510737258863481
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 137bda4962bc2804389306fe28057753, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TagTeamManager
+  caelen:
+    heroName: Caelen
+    element: 0
+    proxyColor: {r: 1, g: 1, b: 1, a: 1}
+    maxHealth: 130
+    currentHealth: 130
+    moveSpeed: 6.5
+    dashSpeed: 16
+    attackDamage: 30
+    attackRange: 2.2
+    attackCooldown: 0.55
+    knockbackStrength: 9
+    attackImpulse: 0.4
+    skillCooldown: 6
+  illya:
+    heroName: Illya
+    element: 1
+    proxyColor: {r: 1, g: 1, b: 1, a: 1}
+    maxHealth: 95
+    currentHealth: 95
+    moveSpeed: 7.6
+    dashSpeed: 16
+    attackDamage: 18
+    attackRange: 3.5
+    attackCooldown: 0.3
+    knockbackStrength: 5.5
+    attackImpulse: 0.55
+    skillCooldown: 6
+  activeHeroIndex: 0
+  illyaDesbloqueada: 0
+  iniciarConIllya: 0
+  puntoReaparicion: {x: 0, y: 0.8, z: 0}
+  attackPoint: {fileID: 4097864804492274661}
+  attackPointCaelen: {fileID: 4097864804492274661}
+  attackPointIllya: {fileID: 7885593373778962726}
+  specialAttackPointCaelen: {fileID: 4793206058545012236}
+  specialAttackPointIllya: {fileID: 7025371042524700832}
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  vfxSwapPrefab: {fileID: 0}
+  vfxRockWallPrefab: {fileID: 3848265919099285680, guid: bf7d9c86cbd67284fb868d8cd48529fd, type: 3}
+  vfxVinesAoEPrefab: {fileID: 2167031654875033045, guid: 6e18c29b8e366674abd6cb360277cb29, type: 3}
+  socketCaelen: {fileID: 5887032739131589296}
+  socketIllya: {fileID: 5991090956165451934}
+  entrada: {fileID: 5554199016541479552}
+--- !u!114 &5554199016541479552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3146b37c24c46f04c8a3befb33b7855b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
+  movimiento: {x: 0, y: 0}
+  deltaRaton: {x: 0, y: 0}
+--- !u!114 &3165894951143603256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc6f549a5800e2a4bac0b5464f89c1b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HeroInteractor
+  radioInteraccion: 2.5
+  capasInteractuables:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  entrada: {fileID: 5554199016541479552}
+  usarHalo: 1
+  bannerInstrucciones: {fileID: 0}
+  textoInstruccion: {fileID: 0}
+  mensajeInteraccion: "Canaliza la energ\xEDa primordial pulsando [F] para interactuar"
+  ultimoPrompt: 
+--- !u!114 &6463756822411696705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18b9f09711fea314c9b540f6469b3b73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthComponent
+  maxHealth: 130
+  currentHealth: 130
+  desactivarAlMorir: 1
+  retardoDesactivacion: 1.4
+  alRecibirDano:
+    m_PersistentCalls:
+      m_Calls: []
+  alMorir:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &3874890468758300389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb58d4cfe5b591c45aede0821e961635, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCombat
+  tagTeam: {fileID: 4660510737258863481}
+  entrada: {fileID: 5554199016541479552}
+  attackPoint: {fileID: 4097864804492274661}
+  capasAfectadas:
+    serializedVersion: 2
+    m_Bits: 1
+  vfxImpactoPiedra: {fileID: 221861251492070244, guid: 1a4d2f57f8bd9634c89fb43fca385308, type: 3}
+  vfxImpactoMadera: {fileID: 8089197866207742944, guid: f84963029109fc049a8a4062ae5abe17, type: 3}
+  prefabMuroBasalto: {fileID: 3848265919099285680, guid: bf7d9c86cbd67284fb868d8cd48529fd, type: 3}
+  distanciaMuro: 2.5
+  radioGolpeMuro: 2.8
+  prefabRaicesAoE: {fileID: 6477525904819762928, guid: 76f5198e198178648b1cf12a869c0ff5, type: 3}
+  radioRaices: 3
+  danoRaices: 15
+  duracionZarzas: 2.5
+--- !u!114 &3139928701410646757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651648849186339520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b8f189bf5330cb479664cc387f86969, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GestorDerrotaHeroe
+  tagTeam: {fileID: 4660510737258863481}
+  controlador: {fileID: 8768611033337255849}
+  entrada: {fileID: 5554199016541479552}
+  panelDerrota: {fileID: 0}
+  textoDerrota: {fileID: 0}
+  mensajeCaelenSolo: "Caelen ha ca\xEDdo. El bosque reclama su juramento."
+  mensajeAmbosCaidos: "Caelen e Illya han ca\xEDdo. El bosque reclama sus juramentos."
+  radioReinicioEnemigos: 80
+  congelarJuego: 1
+--- !u!1 &8145941748703711829
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7025371042524700832}
+  m_Layer: 8
+  m_Name: SpecialAttackPoint_Illya
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7025371042524700832
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8145941748703711829}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 9}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5732139535043655134}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &3762641714268338672
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5228164222210930394}
+    m_Modifications:
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7593997025437580889, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+      propertyPath: m_Name
+      value: MODELO_Caelen
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+--- !u!95 &71818739722356585 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 3803483911692615321, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+  m_PrefabInstance: {fileID: 3762641714268338672}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6205689909200805139 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7073075442103887075, guid: 7e0fd8523fdbd554289f5fb2349c639a, type: 3}
+  m_PrefabInstance: {fileID: 3762641714268338672}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &4312687171056057727
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5732139535043655134}
+    m_Modifications:
+    - target: {fileID: 5805785931436527320, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_Name
+      value: MODELO_Illya
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+--- !u!95 &3954171273078092647 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 952995051727851032, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+  m_PrefabInstance: {fileID: 4312687171056057727}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6917569735972514077 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6618491722685764706, guid: e9b693c846a3b1b42a06b1683313a7d5, type: 3}
+  m_PrefabInstance: {fileID: 4312687171056057727}
+  m_PrefabAsset: {fileID: 0}

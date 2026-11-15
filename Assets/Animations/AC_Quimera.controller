@@ -29,7 +29,7 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: tail_attack
+  m_Name: hit_attack
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
@@ -43,7 +43,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 389401224059472735, guid: 89ba674166e01a648a1406425fd45399, type: 3}
+  m_Motion: {fileID: -6045014951570771117, guid: 89ba674166e01a648a1406425fd45399, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

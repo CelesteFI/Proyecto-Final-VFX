@@ -41,6 +41,7 @@ public class PlayerController : MonoBehaviour
     private bool isDashing = false;
     private float dashTimer = 0f;
     private Vector3 dashDirection;
+    private float velocidadHorizontalActual;
 
     private void Awake()
     {
@@ -102,6 +103,14 @@ public class PlayerController : MonoBehaviour
             verticalVelocityY += gravity * mult * Time.deltaTime;
             controller.Move(new Vector3(0, verticalVelocityY, 0) * Time.deltaTime);
         }
+
+        // 7. Velocidad horizontal real del frame, expuesta para la animación.
+        //    CharacterController.velocity NO sirve para esto: solo refleja el último
+        //    Move() del frame, que aquí es el de gravedad (vertical); leerlo devuelve
+        //    siempre 0 en XZ aunque el héroe esté corriendo.
+        velocidadHorizontalActual = isDashing
+            ? dashSpeed
+            : new Vector3(currentMoveVelocity.x, 0f, currentMoveVelocity.z).magnitude;
     }
 
     private void ProcesarMovimiento(Vector2 input, float speed)
@@ -147,6 +156,15 @@ public class PlayerController : MonoBehaviour
     /// <summary>True mientras el héroe ejecuta un dash (usado por pruebas y puzzles).</summary>
     public bool EstaHaciendoDash => isDashing;
 
+    /// <summary>Velocidad horizontal real del frame (m/s). Alimenta el Animator del héroe.</summary>
+    public float VelocidadHorizontal => velocidadHorizontalActual;
+
+    /// <summary>True si el CharacterController está apoyado en el suelo.</summary>
+    public bool EnSuelo => controller != null && controller.isGrounded;
+
+    /// <summary>Velocidad vertical real del frame (m/s), para salto y caída.</summary>
+    public float VelocidadVertical => verticalVelocityY;
+
     /// <summary>
     /// Desplazamiento externo (ráfagas de viento, plataformas móviles).
     /// Se aplica mediante CharacterController.Move para no romper la colisión.
@@ -175,6 +193,7 @@ public class PlayerController : MonoBehaviour
 
         verticalVelocityY = -2f;
         currentMoveVelocity = Vector3.zero;
+        velocidadHorizontalActual = 0f;
         isDashing = false;
         dashTimer = 0f;
         coyoteCounter = 0f;

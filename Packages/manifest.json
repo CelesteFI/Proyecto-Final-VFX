@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",
-    "com.ramenvr.aura-unity": "https://github.com/ramenvr/AuraForUnityPlugin.git",
+    "com.ramenvr.aura-unity": "git+https://github.com/ramenvr/AuraForUnityPlugin.git#main",
+    "com.ramenvr.autopilot": "https://github.com/ramenvr/autopilot.git?path=/plugin/unity/com.ramenvr.autopilot#9e0fbb0f2a5ae18d68d1f1f5d6ec17aceb15a1d5",
     "com.unity.ai.assistant": "2.20.0-pre.2",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.ai.navigation": "2.0.16",
@@ -50,7 +51,6 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0",
-    "com.ramenvr.autopilot": "https://github.com/ramenvr/autopilot.git?path=/plugin/unity/com.ramenvr.autopilot#9e0fbb0f2a5ae18d68d1f1f5d6ec17aceb15a1d5"
+    "com.unity.modules.xr": "1.0.0"
   }
 }

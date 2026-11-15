@@ -51,7 +51,7 @@ public class EnemyAI : MonoBehaviour
     public float pausaPatrulla = 1.2f;
 
     [Header("Zona de Guardia (Leash)")]
-    [Tooltip("Radio máximo de persecución medido desde el punto de aparición.\nFauna Corrupta = 12 m · Huestes Celestiales = 10 m.")]
+    [Tooltip("Radio máximo de persecución medido desde el punto de aparición.\nFauna Corrupta = 12 m · Huestes Celestiales = 10 m.\nUn valor mayor en el Inspector se respeta (arenas grandes).")]
     public float radioPersecucionMaximo = 12f;
 
     [Tooltip("Los minijefes quedan confinados al radio de su arena de combate.")]
@@ -62,6 +62,10 @@ public class EnemyAI : MonoBehaviour
 
     [Tooltip("Si está desactivado, la IA nunca rompe el agro por distancia (jefes de arena y Guardianes).")]
     public bool usarLeash = true;
+
+    [Tooltip("Centro de la zona de guardia. Si está asignado, el leash se mide desde este punto " +
+             "(y no desde el lugar de aparición) y el agro también se rompe cuando el jugador sale de ese radio.")]
+    public Transform centroGuardia;
 
     [Tooltip("Si está desactivado, el enemigo no recupera vida al volver a su guardia: el daño es definitivo.")]
     public bool regeneraAlRegresar = true;
@@ -98,7 +102,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Start()
     {
-        if (objetivo == null && tagTeam != null) objetivo = tagTeam.transform;
+        ResolverObjetivo();
 
         AplicarLimitesPorArquetipo();
 
@@ -150,8 +154,19 @@ public class EnemyAI : MonoBehaviour
         float distancia = Vector3.Distance(transform.position, objetivo.position);
 
         // Ruptura de agro al salir de la zona de guardia (leash distance).
-        float distanciaOrigen = Vector3.Distance(transform.position, origenPatrulla);
-        if (usarLeash && distanciaOrigen > radioPersecucionMaximo &&
+        // Con centroGuardia el radio se mide desde el centro de la sala y también
+        // se rompe el agro en cuanto el propio jugador sale de ese radio.
+        Vector3 centroLeash = (centroGuardia != null) ? centroGuardia.position : origenPatrulla;
+        float distanciaOrigen = Vector3.Distance(transform.position, centroLeash);
+        bool agotado = distanciaOrigen > radioPersecucionMaximo;
+
+        if (!agotado && centroGuardia != null)
+        {
+            Vector3 jugadorPlano = new Vector3(objetivo.position.x, centroLeash.y, objetivo.position.z);
+            agotado = Vector3.Distance(jugadorPlano, centroLeash) > radioPersecucionMaximo;
+        }
+
+        if (usarLeash && agotado &&
             (estado == Estado.Persecucion || estado == Estado.Ataque))
         {
             IniciarRegreso();
@@ -465,25 +480,30 @@ public class EnemyAI : MonoBehaviour
         switch (arquetipo)
         {
             case Arquetipo.FaunaCorrupta:
-                radioPersecucionMaximo = 12f;
-                confinadoAArena = false;
+                // Con una zona de guardia explícita (centroGuardia) el leash y el
+                // confinamiento son los que fija la escena a partir de la arena real.
+                if (centroGuardia == null)
+                {
+                    radioPersecucionMaximo = Mathf.Max(radioPersecucionMaximo, 12f);
+                    confinadoAArena = false;
+                }
                 break;
 
             case Arquetipo.HuesteCelestial:
-                radioPersecucionMaximo = 10f;
+                radioPersecucionMaximo = Mathf.Max(radioPersecucionMaximo, 10f);
                 confinadoAArena = false;
                 break;
 
             case Arquetipo.BestiaPiedraVoraz:
                 confinadoAArena = true;
-                radioPersecucionMaximo = radioArena;
+                radioPersecucionMaximo = Mathf.Max(radioPersecucionMaximo, radioArena);
                 break;
 
             case Arquetipo.GuardianCeleste:
                 // El Guardián Celeste no tiene leash ni reinicio por distancia, y
                 // una vez dañado no recupera salud (GDD del Nivel 2).
                 confinadoAArena = true;
-                radioPersecucionMaximo = radioArena;
+                radioPersecucionMaximo = Mathf.Max(radioPersecucionMaximo, radioArena);
                 usarLeash = false;
                 regeneraAlRegresar = false;
                 break;
@@ -497,6 +517,12 @@ public class EnemyAI : MonoBehaviour
         radioArena = radioArenaCombate;
         usarLeash = leash;
         regeneraAlRegresar = regenera;
+    }
+
+    /// <summary>Fija el centro del leash (el integrador lo apunta al centro de la arena).</summary>
+    public void ConfigurarCentroGuardia(Transform centro)
+    {
+        centroGuardia = centro;
     }
 
     /// <summary>Cancela el ataque en curso y ordena volver caminando al punto de guardia.</summary>
@@ -604,9 +630,23 @@ public class EnemyAI : MonoBehaviour
     // APOYO
     // ------------------------------------------------------------------
 
+    /// <summary>
+    /// Apunta siempre a la raíz del jugador: primero el TagTeamManager de la escena y,
+    /// si faltara, el objeto con la etiqueta 'Player'. Nunca a un hijo o a un hueso.
+    /// </summary>
     private void ResolverObjetivo()
     {
-        if (tagTeam != null) objetivo = tagTeam.transform;
+        if (tagTeam != null)
+        {
+            objetivo = tagTeam.transform.root;
+            return;
+        }
+
+        GameObject jugador = null;
+        try { jugador = GameObject.FindGameObjectWithTag("Player"); }
+        catch (UnityException) { jugador = null; }
+
+        if (jugador != null) objetivo = jugador.transform.root;
     }
 
     private void EncararObjetivo()

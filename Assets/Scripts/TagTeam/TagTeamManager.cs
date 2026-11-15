@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Gestor del sistema Tag-Team: conserva los datos de Caelen e Illya, arbitra el
-/// relevo ('1' / '2') y mantiene vidas independientes delegando la vitalidad en
+/// relevo ('Tab') y mantiene vidas independientes delegando la vitalidad en
 /// un único HealthComponent que se re-inicializa al cambiar de héroe.
 /// El combate vive en PlayerCombat (Assets/Scripts/Combat) para mantener el
 /// principio de responsabilidad única.
@@ -47,6 +47,10 @@ public class TagTeamManager : MonoBehaviour
     [SerializeField] private int activeHeroIndex = 0; // 0 = Caelen, 1 = Illya
     [SerializeField] private bool illyaDesbloqueada = true;
 
+    [Tooltip("Héroe con el que arranca la escena. Falso = Player_Caelen (Nivel 1). " +
+             "Verdadero = Player_Illya (Nivel 2). Si Illya sigue sellada, manda Caelen.")]
+    public bool iniciarConIllya = false;
+
     [Header("Reaparición tras la Derrota")]
     [Tooltip("Punto al que vuelve el héroe al pulsar 'R' cuando ambos han caído.")]
     public Vector3 puntoReaparicion = new Vector3(0f, 0.8f, 0f);
@@ -55,6 +59,30 @@ public class TagTeamManager : MonoBehaviour
     public bool IllyaDesbloqueada => illyaDesbloqueada;
     public HeroCombatData ActiveHero => (activeHeroIndex == 0) ? caelen : illya;
     public HeroCombatData HeroeInactivo => (activeHeroIndex == 0) ? illya : caelen;
+
+    /// <summary>
+    /// Punto de ataque que corresponde al héroe activo: el centro exterior del escudo
+    /// de Caelen o la punta del báculo de Illya. Si la escena no los tiene cableados,
+    /// se devuelve el punto genérico para no dejar el golpe sin ancla.
+    /// </summary>
+    public Transform PuntoAtaqueActivo
+    {
+        get
+        {
+            Transform punto = (activeHeroIndex == 0) ? attackPointCaelen : attackPointIllya;
+            return (punto != null) ? punto : attackPoint;
+        }
+    }
+
+    /// <summary>
+    /// Ancla del ataque especial del héroe ACTIVO: Caelen invoca el Muro de Basalto en un
+    /// punto cercano y Illya hace emerger las Raíces Voraces mucho más adelante, acorde a
+    /// su rol a distancia. Ambas anclas están a ras de suelo (local Y = 0 de su héroe).
+    /// </summary>
+    public Transform PuntoAtaqueEspecial
+    {
+        get { return (activeHeroIndex == 0) ? specialAttackPointCaelen : specialAttackPointIllya; }
+    }
 
     /// <summary>Vitalidad del héroe activo (eventos observadores para el HUD).</summary>
     public HealthComponent SaludHeroe => saludHeroe;
@@ -78,7 +106,16 @@ public class TagTeamManager : MonoBehaviour
     public event Action OnReaparecido;
 
     [Header("Puntos de Ataque e Hitbox")]
+    [Tooltip("Punto del héroe ACTIVO. El relevo lo refresca desde los puntos individuales.")]
     public Transform attackPoint;
+    [Tooltip("Centro exterior del escudo de Caelen (lado opuesto al brazo).")]
+    public Transform attackPointCaelen;
+    [Tooltip("Punta superior del báculo de Illya.")]
+    public Transform attackPointIllya;
+    [Tooltip("Ancla del Muro de Basalto: a ras de suelo y CERCA de Caelen (ataque de vanguardia).")]
+    public Transform specialAttackPointCaelen;
+    [Tooltip("Ancla de Raíces Voraces: a ras de suelo y LEJOS de Illya (ataque a distancia).")]
+    public Transform specialAttackPointIllya;
     public LayerMask enemyLayers;
 
     [Header("Prefabs de VFX")]
@@ -92,12 +129,6 @@ public class TagTeamManager : MonoBehaviour
 
     [Tooltip("Contenedor 'Player_Illya' dentro de Visual_Model: arrastra aquí el FBX final.")]
     [SerializeField] private GameObject socketIllya;
-
-    [Tooltip("MeshRenderer de la cápsula temporal de Caelen (Capsule_Placeholder).")]
-    [SerializeField] private MeshRenderer proxyRenderer;
-
-    [Tooltip("MeshRenderer de la cápsula temporal de Illya (Capsule_Placeholder).")]
-    [SerializeField] private MeshRenderer proxyRendererIllya;
 
     [Header("Enlaces (asignados en el Inspector)")]
     [Tooltip("PlayerInputReader del mismo Player. No se busca en runtime.")]
@@ -118,7 +149,6 @@ public class TagTeamManager : MonoBehaviour
     {
         Instance = this;
 
-        if (proxyRenderer == null) proxyRenderer = GetComponentInChildren<MeshRenderer>();
         if (entrada == null) entrada = GetComponent<PlayerInputReader>();
 
         saludHeroe = GetComponent<HealthComponent>();
@@ -140,6 +170,15 @@ public class TagTeamManager : MonoBehaviour
 
     private void Start()
     {
+        // Héroe inicial por escena. 'iniciarConIllya' manda, pero Illya sellada
+        // nunca puede arrancar al frente: en ese caso queda Caelen.
+        // El relevo que dejó el altar del Nivel 1 (Illya activa, Caelen reserva)
+        // también empuja a Illya al frente en la escena siguiente.
+        bool relevoDesdeNivel1 = GameProgressManager.Instance != null &&
+                                 GameProgressManager.Instance.illyaActivaEnNivel2;
+
+        activeHeroIndex = ((iniciarConIllya || relevoDesdeNivel1) && illyaDesbloqueada) ? 1 : 0;
+
         // Inicializa la vitalidad del héroe que arranca la partida.
         saludHeroe.Initialize(ActiveHero.maxHealth, ActiveHero.currentHealth);
         ActualizarVisualProxy();
@@ -156,9 +195,8 @@ public class TagTeamManager : MonoBehaviour
 
     private void Update()
     {
-        // 1. Relevo Tag-Team desde el lector central de Input System
-        int relevo = (entrada != null) ? entrada.RelevoSolicitado : -1;
-        if (relevo >= 0 && relevo != activeHeroIndex) IntentarRelevo(relevo);
+        // 1. Relevo Tag-Team: 'Tab' alterna al héroe que no está activo.
+        if (entrada != null && entrada.RelevoPulsado) IntentarRelevo(1 - activeHeroIndex);
 
         // 2. Cooldowns de habilidad de ambos héroes (corren siempre, activos o no)
         if (caelen.skillCooldownTimer > 0f) caelen.skillCooldownTimer -= Time.deltaTime;
@@ -273,9 +311,9 @@ public class TagTeamManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Conmuta los enchufes visuales de cada héroe y tiñe la cápsula del activo.
-    /// El modelo final (FBX) se arrastra dentro del enchufe sin tocar este código:
-    /// basta con apagar su 'Capsule_Placeholder'.
+    /// Conmuta los enchufes visuales de cada héroe y reapunta el punto de ataque al
+    /// que corresponde al activo. Los modelos finales (FBX) viven dentro de cada
+    /// enchufe, así que aquí no hay ninguna malla placeholder que conmutar.
     /// </summary>
     private void ActualizarVisualProxy()
     {
@@ -287,11 +325,9 @@ public class TagTeamManager : MonoBehaviour
         if (socketIllya != null && socketIllya.activeSelf != !caelenActivo)
             socketIllya.SetActive(!caelenActivo);
 
-        MeshRenderer destino = caelenActivo
-            ? proxyRenderer
-            : ((proxyRendererIllya != null) ? proxyRendererIllya : proxyRenderer);
-
-        if (destino != null) destino.material.color = ActiveHero.proxyColor;
+        // El punto de ataque acompaña al héroe activo: escudo de Caelen o báculo de Illya.
+        Transform puntoActivo = PuntoAtaqueActivo;
+        if (puntoActivo != null) attackPoint = puntoActivo;
     }
 
     /// <summary>Desbloquea a Illya al completar el mini-puzle de rescate del Nivel 1.</summary>
@@ -308,8 +344,8 @@ public class TagTeamManager : MonoBehaviour
         OnHeroeCambiado?.Invoke(ActiveHero);
 
         Debug.Log(desbloqueada
-            ? "[TAG-TEAM] Illya liberada: el relevo '2' queda habilitado."
-            : "[TAG-TEAM] Illya sellada: el relevo '2' queda deshabilitado.");
+            ? "[TAG-TEAM] Illya liberada: el relevo con 'Tab' queda habilitado."
+            : "[TAG-TEAM] Illya sellada: el relevo con 'Tab' queda deshabilitado.");
     }
 
     /// <summary>Asigna la capa de enemigos desde código si la escena no la define.</summary>

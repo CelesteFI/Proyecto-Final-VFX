@@ -12,6 +12,7 @@ public class PlayerCombat : MonoBehaviour
     [Header("Enlaces (asignados en el Inspector)")]
     [SerializeField] private TagTeamManager tagTeam;
     [SerializeField] private PlayerInputReader entrada;
+    [Tooltip("Respaldo heredado: el punto real lo resuelve TagTeamManager según el héroe activo.")]
     [SerializeField] private Transform attackPoint;
     [SerializeField] private LayerMask capasAfectadas = 1;
 
@@ -32,6 +33,12 @@ public class PlayerCombat : MonoBehaviour
 
     public float CooldownAtaqueRestante => temporizadorAtaque;
 
+    /// <summary>Se dispara al iniciar un ataque básico. Lo consume el Animator del héroe.</summary>
+    public event System.Action OnAtaqueBasico;
+
+    /// <summary>Se dispara al invocar la habilidad elemental. Lo consume el Animator del héroe.</summary>
+    public event System.Action OnHabilidad;
+
     private CharacterController controlador;
     private float temporizadorAtaque;
 
@@ -45,8 +52,38 @@ public class PlayerCombat : MonoBehaviour
 
         controlador = GetComponent<CharacterController>();
 
-        if (attackPoint == null && tagTeam != null) attackPoint = tagTeam.attackPoint;
+        if (attackPoint == null && tagTeam != null) attackPoint = tagTeam.PuntoAtaqueActivo;
         if (capasAfectadas == 0) capasAfectadas = 1;
+    }
+
+    /// <summary>
+    /// Punto de impacto del héroe ACTIVO: el centro exterior del escudo de Caelen o la
+    /// punta del báculo de Illya. Se resuelve en cada golpe, no en Awake, para que el
+    /// relevo con 'Tab' cambie el origen del ataque sin recablear nada.
+    /// </summary>
+    private Transform PuntoAtaque()
+    {
+        if (tagTeam != null)
+        {
+            Transform activo = tagTeam.PuntoAtaqueActivo;
+            if (activo != null) return activo;
+        }
+        return attackPoint;
+    }
+
+    /// <summary>
+    /// Ancla de los ataques especiales: punto vacío a ras de suelo frente al jugador
+    /// donde emergen el Muro de Basalto y las Raíces Voraces. Si la escena no lo tiene
+    /// cableado, se conserva el cálculo original que recibe 'porDefecto'.
+    /// </summary>
+    private Vector3 PuntoEspecial(Vector3 porDefecto)
+    {
+        if (tagTeam != null)
+        {
+            Transform especial = tagTeam.PuntoAtaqueEspecial;
+            if (especial != null) return especial.position;
+        }
+        return porDefecto;
     }
 
     private void Update()
@@ -90,12 +127,14 @@ public class PlayerCombat : MonoBehaviour
         if (heroe == null) return;
 
         temporizadorAtaque = heroe.attackCooldown;
+        OnAtaqueBasico?.Invoke();
 
         // 1. Compromiso físico: traslación frontal que da peso al golpe.
         ImpulsarHaciaAdelante(heroe.attackImpulse);
 
-        Vector3 centro = (attackPoint != null)
-            ? attackPoint.position
+        Transform ancla = PuntoAtaque();
+        Vector3 centro = (ancla != null)
+            ? ancla.position
             : transform.position + transform.forward * 1.2f;
 
         // 2. VFX de impacto garantizado en el AttackPoint, orientado a transform.forward.
@@ -184,6 +223,7 @@ public class PlayerCombat : MonoBehaviour
         }
 
         heroe.skillCooldownTimer = heroe.skillCooldown;
+        OnHabilidad?.Invoke();
 
         if (heroe.element == HeroCombatData.ElementType.Piedra) InvocarMuroBasalto(heroe);
         else InvocarRaicesVoraces(heroe);
@@ -199,7 +239,7 @@ public class PlayerCombat : MonoBehaviour
             return;
         }
 
-        Vector3 posicion = transform.position + transform.forward * distanciaMuro;
+        Vector3 posicion = PuntoEspecial(transform.position + transform.forward * distanciaMuro);
         Instantiate(prefabMuroBasalto, posicion, transform.rotation);
 
         // El muro emerge del suelo: el golpe de tierra daña lo que pilla delante.
@@ -212,13 +252,18 @@ public class PlayerCombat : MonoBehaviour
     {
         CameraFollow.Instance?.TriggerScreenShake(0.18f, 0.2f);
 
+        // El ancla del ataque especial manda: las raíces emergen del suelo frente a
+        // Illya y el golpe en área se centra en ese mismo punto, para que el VFX y el
+        // daño coincidan.
+        Vector3 centro = PuntoEspecial(transform.position);
+
         if (prefabRaicesAoE != null)
         {
-            GameObject raices = Instantiate(prefabRaicesAoE, transform.position, Quaternion.identity);
+            GameObject raices = Instantiate(prefabRaicesAoE, centro, Quaternion.identity);
             Destroy(raices, 3f);
         }
 
-        int alcanzados = GolpeEnArea(transform.position, radioRaices, danoRaices, heroe);
+        int alcanzados = GolpeEnArea(centro, radioRaices, danoRaices, heroe);
 
         Debug.Log($"[COMBATE] Illya invocó Raíces Voraces sobre {alcanzados} objetivo(s) con anclaje de zarzas {duracionZarzas:F1}s.");
     }
@@ -295,7 +340,8 @@ public class PlayerCombat : MonoBehaviour
         if (tagTeam == null || tagTeam.ActiveHero == null) return;
 
         Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);
-        Vector3 centro = attackPoint != null ? attackPoint.position : transform.position + transform.forward * 1.2f;
+        Transform ancla = PuntoAtaque();
+        Vector3 centro = ancla != null ? ancla.position : transform.position + transform.forward * 1.2f;
         Gizmos.DrawWireSphere(centro, tagTeam.ActiveHero.attackRange);
     }
 }

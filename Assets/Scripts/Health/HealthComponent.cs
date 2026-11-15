@@ -132,6 +132,17 @@ public class HealthComponent : MonoBehaviour, IDamageable
         NotificarCambio();
     }
 
+    /// <summary>
+    /// Ajusta si el GameObject se desactiva al morir. Lo usa <see cref="DisolucionMuerte"/>
+    /// cuando la muerte la resuelve una disolución con destrucción final: en ese caso la
+    /// rutina de desactivación no debe adelantarse al efecto.
+    /// </summary>
+    public void ConfigurarDesactivacionAlMorir(bool desactivar, float retardo = -1f)
+    {
+        desactivarAlMorir = desactivar;
+        if (retardo >= 0f) retardoDesactivacion = retardo;
+    }
+
     private void Morir()
     {
         OnDied?.Invoke();

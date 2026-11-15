@@ -18,7 +18,7 @@
       "hash": "142ea0af4890337f0ff6658df61db23982313717"
     },
     "com.ramenvr.aura-unity": {
-      "version": "https://github.com/ramenvr/AuraForUnityPlugin.git",
+      "version": "git+https://github.com/ramenvr/AuraForUnityPlugin.git#main",
       "depth": 0,
       "source": "git",
       "dependencies": {

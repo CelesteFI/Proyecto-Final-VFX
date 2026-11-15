@@ -17,7 +17,7 @@ using UnityEngine.InputSystem;
 ///   Espacio       salto (nunca pausa)
 ///   Shift         dash
 ///   F             interactuar
-///   1 / 2         relevo Tag-Team
+///   Tab           relevo Tag-Team (único atajo: '1' y '2' ya no cambian de héroe)
 ///   Escape        pausa
 /// El clic izquierdo queda reservado a la interfaz y a la selección en el mundo.
 /// </summary>
@@ -46,8 +46,12 @@ public class PlayerInputReader : MonoBehaviour
     /// <summary>Reaparición tras la derrota de ambos héroes ('R').</summary>
     public bool ReinicioPulsado { get; private set; }
 
-    /// <summary>-1 = sin relevo este frame; 0 = Caelen; 1 = Illya.</summary>
-    public int RelevoSolicitado { get; private set; } = -1;
+    /// <summary>
+    /// True únicamente en el frame en que se pulsa 'Tab'. El destino del relevo lo
+    /// decide TagTeamManager (alterna al héroe que no está activo), de modo que este
+    /// lector no necesita conocer el estado del Tag-Team.
+    /// </summary>
+    public bool RelevoPulsado { get; private set; }
 
     /// <summary>
     /// Bloqueo temporal de la entrada de combate. Lo activa el gestor de derrota
@@ -133,9 +137,9 @@ public class PlayerInputReader : MonoBehaviour
         SaltoPulsado = !bloqueada && teclado.spaceKey.wasPressedThisFrame;
         DashPulsado = !bloqueada && teclado.leftShiftKey.wasPressedThisFrame;
 
-        // ---- Relevo Tag-Team ----
-        if (teclado.digit1Key.wasPressedThisFrame) RelevoSolicitado = 0;
-        if (teclado.digit2Key.wasPressedThisFrame) RelevoSolicitado = 1;
+        // ---- Relevo Tag-Team: exclusivamente Tab ----
+        // Las teclas numéricas 1 y 2 quedan libres: ya no solicitan ningún relevo.
+        RelevoPulsado = teclado.tabKey.wasPressedThisFrame;
 
         // ---- Interacción de entorno ----
         InteraccionPulsada = !sobreUI && teclado.fKey.wasPressedThisFrame;
@@ -164,6 +168,6 @@ public class PlayerInputReader : MonoBehaviour
         InteraccionPulsada = false;
         PausaPulsada = false;
         ReinicioPulsado = false;
-        RelevoSolicitado = -1;
+        RelevoPulsado = false;
     }
 }

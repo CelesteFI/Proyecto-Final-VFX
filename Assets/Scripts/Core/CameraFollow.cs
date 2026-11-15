@@ -45,6 +45,9 @@ public class CameraFollow : MonoBehaviour
     [Header("Encuadre")]
     [Tooltip("Field of View aplicado a la cámara en Start.")]
     public float fieldOfView = 60f;
+    [Tooltip("Inclinación vertical inicial (grados por encima del horizonte) del brazo orbital. " +
+             "Define la vista: ~35° es la proyección isométrica clásica.")]
+    [SerializeField] private float pitchInicial = 20f;
 
     [Header("Detección de UI")]
     [Tooltip("Contenedores y modales del HUD. Se aplica 'margenUI' px alrededor de cada uno " +
@@ -100,6 +103,12 @@ public class CameraFollow : MonoBehaviour
 
         currentDistance = defaultDistance;
         if (target != null) currentTargetPos = target.position + targetOffset;
+
+        // La inclinación de partida la fija el encuadre configurado en el Inspector.
+        targetPitch = Mathf.Clamp(pitchInicial, minVerticalAngle, maxVerticalAngle);
+        currentPitch = targetPitch;
+        targetYaw = 0f;
+        currentYaw = 0f;
 
         Camera camara = GetComponent<Camera>();
         if (camara != null) camara.fieldOfView = fieldOfView;

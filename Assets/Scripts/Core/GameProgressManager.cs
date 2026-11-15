@@ -15,6 +15,9 @@ public class GameProgressManager : MonoBehaviour
     public bool illyaDesbloqueada = false;
     public bool zephyrLiberada = false;
 
+    [Tooltip("El altar del Nivel 1 entrega el relevo: en el Nivel 2 la jugadora activa es Illya y Caelen queda como reserva.")]
+    public bool illyaActivaEnNivel2 = false;
+
     [Header("Progreso del Nivel 1")]
     [Tooltip("10 % · Primer enemigo de la Arena A derrotado.")]
     public bool enemigoNivel1Derrotado = false;
@@ -109,6 +112,18 @@ public class GameProgressManager : MonoBehaviour
         GameSaveState.IllyaDesbloqueada = desbloqueada;
     }
 
+    /// <summary>
+    /// Deja constancia de que el Nivel 1 terminó con Illya al frente: en el Nivel 2 ella
+    /// arranca como jugadora activa y Caelen como reserva.
+    /// </summary>
+    public void MarcarIllyaAlFrenteEnNivel2()
+    {
+        illyaActivaEnNivel2 = true;
+        DesbloquearIllya(true);
+
+        Debug.Log("[PROGRESO] Relevo registrado: en el Nivel 2 la jugadora activa es Illya y Caelen queda como reserva.");
+    }
+
     /// <summary>Marca la tobera eólica del Nivel 2 como activada (hito del 70 %).</summary>
     public void MarcarToberaEolica()
     {
@@ -186,6 +201,7 @@ public class GameProgressManager : MonoBehaviour
     {
         illyaDesbloqueada = false;
         zephyrLiberada = false;
+        illyaActivaEnNivel2 = false;
         enemigoNivel1Derrotado = false;
         puzzleRaicesNivel1Resuelto = false;
         bossNivel1Derrotado = false;

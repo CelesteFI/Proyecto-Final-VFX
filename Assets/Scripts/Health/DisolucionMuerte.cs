@@ -2,20 +2,29 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Disolución de muerte sobre el shader "Custom/DissolveSurface".
-/// Al morir la entidad interpola '_DissolveAmount' de 0 a 1 antes de que el
-/// HealthComponent desactive el GameObject, de modo que el cadáver se deshace
-/// en lugar de desaparecer de golpe.
-/// Todo se aplica con MaterialPropertyBlock: no instancia materiales por
-/// renderer ni filtra el efecto al resto de enemigos que comparten material.
+/// Muerte de los enemigos del Nivel 1 en dos tiempos:
+///  1. el renderer principal pasa al material de muerte (`Scorpion Death.mat`);
+///  2. se interpola '_DissolveAmount' de 0 a 1 durante <see cref="duracion"/> segundos;
+///  3. al terminar, el GameObject del enemigo se destruye.
+/// Todo se aplica con MaterialPropertyBlock: no se instancia ningún material por
+/// renderer ni se filtra el efecto al resto de enemigos que comparten material.
+/// Los jefes que deben seguir existiendo en la escena (porque la arena o el gestor de
+/// oleadas los referencian) se configuran con <c>destruirAlTerminar = false</c>: en ese
+/// caso el material no se sustituye y el HealthComponent los desactiva como siempre.
 /// </summary>
 [DisallowMultipleComponent]
 public class DisolucionMuerte : MonoBehaviour
 {
     [Header("Disolución")]
-    [SerializeField] private float duracion = 1.05f;
+    [SerializeField] private float duracion = 1.5f;
     [SerializeField] private string propiedad = "_DissolveAmount";
     [SerializeField] private float valorFinal = 1f;
+
+    [Header("Material de Muerte y Destrucción")]
+    [Tooltip("Material principal que sustituye al del enemigo al morir. Vacío = conserva el suyo.")]
+    [SerializeField] private Material materialMuerte;
+    [Tooltip("Si está activo, el GameObject del enemigo se destruye al acabar la disolución.")]
+    [SerializeField] private bool destruirAlTerminar = false;
 
     private Renderer[] renderers;
     private MaterialPropertyBlock bloque;
@@ -29,11 +38,17 @@ public class DisolucionMuerte : MonoBehaviour
         bloque = new MaterialPropertyBlock();
         idPropiedad = Shader.PropertyToID(propiedad);
         salud = GetComponent<HealthComponent>();
+        if (salud == null) salud = GetComponentInParent<HealthComponent>();
+
+        // La disolución destruye el objeto cuando termina: la rutina de desactivación
+        // del HealthComponent no debe cortarla por la mitad.
+        if (destruirAlTerminar && salud != null) salud.ConfigurarDesactivacionAlMorir(false);
     }
 
     private void OnEnable()
     {
         if (salud == null) salud = GetComponent<HealthComponent>();
+        if (salud == null) salud = GetComponentInParent<HealthComponent>();
         if (salud != null) salud.OnDied += Iniciar;
     }
 
@@ -52,8 +67,13 @@ public class DisolucionMuerte : MonoBehaviour
 
     private IEnumerator Rutina()
     {
+        // 1. Material de muerte en el renderer principal (y en el resto de la jerarquía).
+        SustituirMaterial();
+
         float total = Mathf.Max(0.05f, duracion);
         float t = 0f;
+
+        Aplicar(0f);
 
         while (t < total)
         {
@@ -63,7 +83,38 @@ public class DisolucionMuerte : MonoBehaviour
         }
 
         Aplicar(valorFinal);
+
+        // 2. El enemigo sale de la escena cuando la disolución ha terminado.
+        if (destruirAlTerminar)
+        {
+            rutina = null;
+            Destroy(gameObject);
+            yield break;
+        }
+
         rutina = null;
+    }
+
+    /// <summary>
+    /// Sustituye el material de todos los renderers por <see cref="materialMuerte"/>.
+    /// Solo se ejecuta cuando el enemigo va a desaparecer: los jefes conservan su material.
+    /// </summary>
+    private void SustituirMaterial()
+    {
+        if (materialMuerte == null || renderers == null) return;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer r = renderers[i];
+            if (r == null) continue;
+
+            Material[] materiales = r.sharedMaterials;
+            if (materiales == null || materiales.Length == 0) continue;
+
+            for (int j = 0; j < materiales.Length; j++) materiales[j] = materialMuerte;
+
+            r.sharedMaterials = materiales;
+        }
     }
 
     private void Aplicar(float cantidad)
@@ -85,5 +136,13 @@ public class DisolucionMuerte : MonoBehaviour
     public void Configurar(float segundos)
     {
         duracion = Mathf.Max(0.05f, segundos);
+    }
+
+    /// <summary>Configuración completa desde el integrador de escena.</summary>
+    public void ConfigurarMuerte(Material material, float segundos, bool destruir)
+    {
+        materialMuerte = material;
+        duracion = Mathf.Max(0.05f, segundos);
+        destruirAlTerminar = destruir;
     }
 }
