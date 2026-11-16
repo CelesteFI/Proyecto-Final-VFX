@@ -1,34 +1,31 @@
 using System;
-using TMPro;
 using UnityEngine;
 
 /// <summary>
 /// Tótem rúnico del bloque `06_Puzzle_Lore` (Nivel 1).
-/// Su collider es un Trigger: al entrar el héroe se publica «Presiona [F] para encender»
-/// en el banner de instrucciones del HUD. Una única pulsación de 'F' enciende el tótem
-/// (intensidad 0 -> 1 del material `Fuego  Azul` mediante <see cref="MaterialPropertyBlock"/>,
-/// de modo que cada tótem es independiente y no instancia materiales), avisa al
-/// <see cref="PuzzleLoreTotems"/> de la zona y, si el tótem tiene lore, entrega su
-/// fragmento a <see cref="LoreUI"/> (que abre `Modal_Lore` y refresca el contador).
+///
+/// MECÁNICA BASE únicamente. Su collider es un Trigger: al entrar el héroe se publica
+/// «Presiona [F] para encender» en el banner de instrucciones del Canvas_HUD y una única
+/// pulsación de 'F' enciende el tótem (intensidad 0 -> 1 del material `Fuego  Azul`
+/// mediante <see cref="MaterialPropertyBlock"/>, de modo que cada tótem es independiente
+/// y no instancia materiales), enciende su Point Light y avisa al <see cref="PuzzleLoreTotems"/>
+/// de la zona.
+///
+/// La HISTORIA no vive aquí: el módulo <see cref="EmisorLore"/> de este mismo GameObject
+/// escucha <see cref="OnLeido"/> y entrega su fragmento a <see cref="Gestor_Lore"/>.
+/// Este script no guarda referencias a paneles, textos, contadores ni sliders.
 /// El banner se oculta de forma permanente para un tótem ya encendido.
-/// No construye interfaz ni busca referencias en runtime.
 /// </summary>
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Collider))]
 public class TotemLore : MonoBehaviour
 {
     [Header("Identidad del Fragmento")]
-    [Tooltip("Identificador único persistente (PlayerPrefs).")]
+    [Tooltip("Identificador único persistente (PlayerPrefs). Lo usa el progreso global.")]
     [SerializeField] private string idFragmento = "N1_Totem_06_01";
-    [SerializeField] private string titulo = "Fragmento Rúnico";
-
-    [Tooltip("Lore del tótem. Si está vacío, el tótem se enciende pero no entrega fragmento.")]
-    [TextArea(3, 10)]
-    [SerializeField] private string cuerpo = string.Empty;
 
     [Header("Banner de Instrucciones del HUD")]
-    [SerializeField] private GameObject bannerInstrucciones;
-    [SerializeField] private TextMeshProUGUI textoInstruccion;
+    [Tooltip("Texto del aviso que reafirma cada frame mientras el héroe está dentro.")]
     [SerializeField] private string mensajeEntrada = "Presiona [F] para encender";
 
     [Header("Fuego Azul (MaterialPropertyBlock por tótem)")]
@@ -55,23 +52,20 @@ public class TotemLore : MonoBehaviour
     public event Action<TotemLore> OnLeido;
 
     public string IdFragmento => idFragmento;
-    public string Titulo => titulo;
-    public string Cuerpo => cuerpo;
-
-    /// <summary>True si el tótem tiene un fragmento de lore que entregar.</summary>
-    public bool TieneLore => !string.IsNullOrWhiteSpace(cuerpo);
-
     public bool YaEncendido => yaEncendido;
     public bool JugadorDentro => jugadorDentro;
 
-    /// <summary>Alias histórico de <see cref="YaEncendido"/> (lo consulta SelloNarrativo).</summary>
+    /// <summary>Alias histórico de <see cref="YaEncendido"/>.</summary>
     public bool Leido => yaEncendido;
 
     public bool PuedeInteractuar => !yaEncendido;
-    public string TextoPrompt => yaEncendido ? $"«{titulo}» ya encendido" : mensajeEntrada;
+    public string TextoPrompt => yaEncendido ? "Tótem ya encendido" : mensajeEntrada;
 
     private MaterialPropertyBlock bloque;
     private int idIntensidad;
+
+    /// <summary>HUD del nivel. Se resuelve en Awake desde PlayerInputReader.canvasHUD.</summary>
+    [NonSerialized] public Canvas_HUD canvasHUD;
 
     private void Awake()
     {
@@ -81,6 +75,9 @@ public class TotemLore : MonoBehaviour
         if (col != null) col.isTrigger = true;
 
         if (luzTotem == null) luzTotem = GetComponentInChildren<Light>(true);
+
+        if (entrada == null) entrada = GetComponentInParent<PlayerInputReader>();
+        if (entrada != null) canvasHUD = entrada.canvasHUD;
 
         // Todos los tótems arrancan apagados: la intensidad se escribe por bloque de
         // propiedades, así que el material compartido no se modifica.
@@ -131,8 +128,8 @@ public class TotemLore : MonoBehaviour
     }
 
     /// <summary>
-    /// Enciende el tótem una única vez: fuego azul a 1, aviso retirado y registro en el
-    /// gestor de la zona (que actualiza contadores y abre el lore si corresponde).
+    /// Enciende el tótem una única vez: fuego azul a 1, luz encendida, aviso retirado y
+    /// registro en el gestor de la zona. El emisor de lore escucha <see cref="OnLeido"/>.
     /// </summary>
     public void Encender()
     {
@@ -148,7 +145,7 @@ public class TotemLore : MonoBehaviour
 
         OnLeido?.Invoke(this);
 
-        Debug.Log($"[TÓTEM] {name} encendido (lore={(TieneLore ? "'" + titulo + "'" : "sin fragmento")}).");
+        Debug.Log($"[TÓTEM] {name} encendido.");
     }
 
     /// <summary>Compatibilidad con las herramientas de diagnóstico anteriores.</summary>
@@ -165,33 +162,26 @@ public class TotemLore : MonoBehaviour
         AplicarLuz(yaEncendido);
     }
 
-    /// <summary>Configuración desde el integrador de escena.</summary>
-    public void ConfigurarTotem(string id, string tituloNuevo, string cuerpoNuevo, Renderer[] fuegos,
-                                PlayerInputReader input, PuzzleLoreTotems gestorZona,
-                                GameObject banner, TextMeshProUGUI txtBanner, string mensaje)
+    /// <summary>Configuración de la mecánica desde el integrador de escena.</summary>
+    public void ConfigurarTotem(string id, Renderer[] fuegos, PlayerInputReader input,
+                                PuzzleLoreTotems gestorZona, string mensaje)
     {
-        idFragmento = id;
-        titulo = string.IsNullOrWhiteSpace(tituloNuevo) ? "Fragmento Rúnico" : tituloNuevo;
-        cuerpo = cuerpoNuevo ?? string.Empty;
+        idFragmento = string.IsNullOrWhiteSpace(id) ? idFragmento : id;
         visualesFuego = fuegos ?? new Renderer[0];
         entrada = input;
         gestor = gestorZona;
-        bannerInstrucciones = banner;
-        textoInstruccion = txtBanner;
         mensajeEntrada = string.IsNullOrWhiteSpace(mensaje) ? "Presiona [F] para encender" : mensaje;
 
+        if (entrada != null) canvasHUD = entrada.canvasHUD;
         AplicarIntensidad(yaEncendido ? intensidadEncendido : 0f);
     }
 
-    /// <summary>Compatibilidad con el integrador histórico (firma anterior a la zona 06).</summary>
-    public void Configurar(string id, string tituloNuevo, string cuerpoNuevo, string textoPrompt,
-                           LoreUI ui, Renderer visualTotem, GameObject marca)
+    /// <summary>Configuración de la luz desde el integrador de escena.</summary>
+    public void ConfigurarLuz(Light luz, float intensidad)
     {
-        idFragmento = id;
-        titulo = string.IsNullOrWhiteSpace(tituloNuevo) ? "Fragmento Rúnico" : tituloNuevo;
-        cuerpo = cuerpoNuevo ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(textoPrompt)) mensajeEntrada = textoPrompt;
-        if (visualTotem != null) visualesFuego = new[] { visualTotem };
+        luzTotem = luz;
+        if (intensidad > 0f) intensidadLuz = intensidad;
+        AplicarLuz(yaEncendido);
     }
 
     // ------------------------------------------------------------------ utilidades
@@ -203,14 +193,6 @@ public class TotemLore : MonoBehaviour
 
         luzTotem.intensity = encendida ? intensidadLuz : 0f;
         luzTotem.enabled = encendida;
-    }
-
-    /// <summary>Configuración de la luz desde el integrador de escena.</summary>
-    public void ConfigurarLuz(Light luz, float intensidad)
-    {
-        luzTotem = luz;
-        if (intensidad > 0f) intensidadLuz = intensidad;
-        AplicarLuz(yaEncendido);
     }
 
     private void AplicarIntensidad(float valor)
@@ -232,17 +214,12 @@ public class TotemLore : MonoBehaviour
 
     private void MostrarBanner()
     {
-        if (bannerInstrucciones != null && !bannerInstrucciones.activeSelf)
-            bannerInstrucciones.SetActive(true);
-
-        if (textoInstruccion != null && textoInstruccion.text != mensajeEntrada)
-            textoInstruccion.text = mensajeEntrada;
+        if (canvasHUD != null) canvasHUD.MostrarBannerInstrucciones(mensajeEntrada);
     }
 
     private void OcultarBanner()
     {
-        if (bannerInstrucciones != null && bannerInstrucciones.activeSelf)
-            bannerInstrucciones.SetActive(false);
+        if (canvasHUD != null) canvasHUD.OcultarBannerInstrucciones();
     }
 
     private static bool EsJugador(Collider otro)

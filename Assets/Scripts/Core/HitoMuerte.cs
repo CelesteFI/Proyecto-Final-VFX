@@ -25,6 +25,12 @@ public class HitoMuerte : MonoBehaviour
     [Header("Hito")]
     [SerializeField] private HitoJuego hito = HitoJuego.JefeNivel1;
 
+    [Header("Progreso del Nivel (HUD)")]
+    [Tooltip("Canvas_HUD del nivel. Recibe SumarProgreso al morir el jefe.")]
+    [SerializeField] private Canvas_HUD canvasHUD;
+    [Tooltip("Fracción (0..1) que suma a la Barra_Progreso al morir el jefe.")]
+    [SerializeField] private float progresoAlCumplirse = 0.1f;
+
     [Header("Consecuencias (inspector)")]
     [Tooltip("Se invoca una sola vez al cumplirse el hito.")]
     [SerializeField] private UnityEvent alCumplirse = new UnityEvent();
@@ -58,6 +64,9 @@ public class HitoMuerte : MonoBehaviour
 
         GameProgressManager gm = GameProgressManager.Instance;
         if (gm != null) gm.MarcarHito(hito);
+
+        // Señal de progreso al HUD: el jefe del nivel ha caído.
+        if (canvasHUD != null) canvasHUD.SumarProgreso(progresoAlCumplirse);
 
         alCumplirse?.Invoke();
         Debug.Log($"[HITO] {hito} cumplido en '{name}'. Progreso: {gm?.ProgresoPorcentaje ?? 0} %.");

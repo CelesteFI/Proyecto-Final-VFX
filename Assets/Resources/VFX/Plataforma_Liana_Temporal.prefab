@@ -121,7 +121,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3461286510146332784}
-  - component: {fileID: 3958888248095073059}
   m_Layer: 0
   m_Name: Plataforma_Liana_Temporal
   m_TagString: Untagged
@@ -145,16 +144,3 @@ Transform:
   - {fileID: 5208204097729107416}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3958888248095073059
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1419862367035085246}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72e719ba02af45c40b8ff43f20a2476c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TemporarySummon
-  lifeTime: 5

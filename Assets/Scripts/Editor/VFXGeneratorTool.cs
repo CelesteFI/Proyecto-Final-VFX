@@ -201,8 +201,6 @@ public class VFXGeneratorTool : EditorWindow
         Material mat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/BlockoutColors/M_L1_RocaBasalto.mat");
         if (mat != null) go.GetComponent<MeshRenderer>().sharedMaterial = mat;
 
-        go.AddComponent<TemporarySummon>().lifeTime = 5.0f;
-
         PrefabUtility.SaveAsPrefabAsset(go, "Assets/Resources/VFX/Muro_Basalto_Habilidad.prefab");
         DestroyImmediate(go);
     }

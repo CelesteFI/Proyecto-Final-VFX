@@ -994,7 +994,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: ReiniciarNivel
         m_Mode: 1
@@ -1457,7 +1457,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3087561049237909480}
-  - component: {fileID: 2567856851015690812}
   m_Layer: 5
   m_Name: Pentagram_Selector
   m_TagString: Untagged
@@ -1490,40 +1489,6 @@ RectTransform:
   m_AnchoredPosition: {x: 49, y: 23}
   m_SizeDelta: {x: 400, y: 400}
   m_Pivot: {x: 0, y: 0}
---- !u!114 &2567856851015690812
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1038331930446107361}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b3c6d21072c11d468b6fe96ad66913d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PentagramSelectorUI
-  tagTeam: {fileID: 0}
-  iconoCentral: {fileID: 9047067330255978253}
-  glowCentral: {fileID: 0}
-  iconosSatelite:
-  - {fileID: 7289036631385714500}
-  - {fileID: 5135759085488054113}
-  - {fileID: 4954519172590704727}
-  - {fileID: 1412822190787329493}
-  - {fileID: 4846768786947190910}
-  glowsSatelite:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  gruposSatelite:
-  - {fileID: 3724361921441981799}
-  - {fileID: 4209101969349889190}
-  - {fileID: 2959959336729077345}
-  - {fileID: 4758984251509457947}
-  - {fileID: 2631791011718702886}
-  alfaBloqueado: 0.35
 --- !u!1 &1066388722857487313
 GameObject:
   m_ObjectHideFlags: 0
@@ -3630,7 +3595,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 3697416318719710617}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: LoreUI, Assembly-CSharp
         m_MethodName: Cerrar
         m_Mode: 1
@@ -3653,7 +3618,6 @@ GameObject:
   - component: {fileID: 1085023294855648297}
   - component: {fileID: 4660265828268164237}
   - component: {fileID: 2130404526600137830}
-  - component: {fileID: 1104096837910184946}
   m_Layer: 5
   m_Name: Rejilla_Nodos
   m_TagString: Untagged
@@ -3726,77 +3690,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &1104096837910184946
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1993027512925448991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e32f929151a849845aa30dd88233a25b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HeroAbilityTreeUI
-  botones:
-  - {fileID: 2429984290013760982}
-  - {fileID: 5912937616652206987}
-  - {fileID: 1096085356069580230}
-  - {fileID: 8726299450427255023}
-  - {fileID: 0}
-  - {fileID: 0}
-  nodos:
-  - nombre: Muro de Basalto
-    elemento: Tierra
-    costo: 3
-    moneda: Cristales de Voto
-    descripcion: "Caelen arranca una losa de basalto del suelo y la clava frente
-      a \xE9l. Bloquea el paso, sirve de trinchera contra r\xE1fagas y es la \xFAnica
-      forma de energizar las placas tel\xFAricas de presi\xF3n."
-    colorNodo: {r: 0.55, g: 0.42, b: 0.22, a: 1}
-  - nombre: Piel de Roca
-    elemento: Tierra
-    costo: 5
-    moneda: Oro Puro
-    descripcion: "Endurece la piel de Caelen: reduce el da\xF1o recibido un 25% durante
-      6 segundos. Sinergia con Muro de Basalto al sostener una posici\xF3n sellada."
-    colorNodo: {r: 0.62, g: 0.48, b: 0.26, a: 1}
-  - nombre: "Ra\xEDces Voraces"
-    elemento: Madera
-    costo: 3
-    moneda: Cristales de Voto
-    descripcion: "Illya hace brotar ra\xEDces en un \xE1rea de 3 metros que golpean
-      a todo enemigo cercano y aplican retroceso. Ideal para limpiar enjambres de
-      Fauna Corrupta."
-    colorNodo: {r: 0.16, g: 0.55, b: 0.34, a: 1}
-  - nombre: Pulso de Savia
-    elemento: Madera
-    costo: 5
-    moneda: Esencias Elementales
-    descripcion: "Illya canaliza savia viva y sana un 20% de la vitalidad del h\xE9roe
-      activo. Puede usarse durante el relevo para sostener al compa\xF1ero."
-    colorNodo: {r: 0.2, g: 0.62, b: 0.4, a: 1}
-  - nombre: "Sinergia Tel\xFArica"
-    elemento: Pasiva
-    costo: 8
-    moneda: Cristales de Voto
-    descripcion: "Los golpes de Caelen sobre un enemigo aturdido por Ra\xEDces Voraces
-      infligen un 30% de da\xF1o adicional. Refuerza el ciclo Tag-Team entre Tierra
-      y Madera."
-    colorNodo: {r: 0.34, g: 0.3, b: 0.52, a: 1}
-  - nombre: "V\xEDnculo de Savia"
-    elemento: Pasiva
-    costo: 8
-    moneda: Oro Puro
-    descripcion: "Al cambiar de h\xE9roe, el h\xE9roe entrante recibe un escudo equivalente
-      al 10% de la vida del h\xE9roe saliente. Premia el relevo bien cronometrado."
-    colorNodo: {r: 0.22, g: 0.46, b: 0.5, a: 1}
-  textoNombre: {fileID: 9087914676547243122}
-  textoCosto: {fileID: 5766326427024933184}
-  textoDescripcion: {fileID: 8996678579961110801}
-  iconoElemento: {fileID: 0}
-  indiceInicial: 0
-  tagTeam: {fileID: 0}
 --- !u!1 &2074974591501287522
 GameObject:
   m_ObjectHideFlags: 0
@@ -4263,7 +4156,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: Reanudar
         m_Mode: 1
@@ -5684,7 +5577,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: AlternarAyuda
         m_Mode: 1
@@ -6380,10 +6273,7 @@ GameObject:
   - component: {fileID: 6263622791580144748}
   - component: {fileID: 5246553921595881567}
   - component: {fileID: 4010088501778620178}
-  - component: {fileID: 5663338999373562908}
-  - component: {fileID: 8571053675931300395}
   - component: {fileID: 2873597095817418321}
-  - component: {fileID: 1054592178143896490}
   m_Layer: 5
   m_Name: Canvas_HUD
   m_TagString: Untagged
@@ -6488,53 +6378,6 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &5663338999373562908
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3774938860916048055}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c0228c2b6d5281a42a969e7f46fcf187, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CombatHUDManager
-  tagTeam: {fileID: 0}
-  portraitHero: {fileID: 5229322164234260826}
-  textHeroName: {fileID: 7355518706209935405}
-  healthSlider: {fileID: 5027165960004103217}
-  healthDelaySlider: {fileID: 0}
-  staminaSlider: {fileID: 0}
-  delayBarSpeed: 1.8
-  barrasReserva: []
-  etiquetasReserva: []
-  iconSkillRadialCooldown: {fileID: 0}
-  textSkillCooldown: {fileID: 0}
-  colorCaelenPiedra: {r: 0.85, g: 0.55, b: 0.25, a: 1}
-  colorIllyaMadera: {r: 0.25, g: 0.85, b: 0.45, a: 1}
-  duracionParpadeo: 0.18
-  colorImpacto: {r: 1, g: 1, b: 1, a: 1}
---- !u!114 &8571053675931300395
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3774938860916048055}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 765e70d52f2b51a479a3df0c44eeb49d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PauseMenuUI
-  modal: {fileID: 6433233847094701949}
-  textoProgreso: {fileID: 6026281708067240473}
-  entrada: {fileID: 0}
-  bannerInstrucciones: {fileID: 3926453739748521123}
-  formatoProgreso: 'Progreso del Nivel: {0}%'
-  textoControles: "WASD mover \xB7 Rat\xF3n c\xE1mara \xB7 Clic izq. atacar \xB7
-    Clic der./E habilidad \xB7 F interactuar \xB7 1 / 2 relevo \xB7 Esc pausa"
-  duracionAyuda: 4
 --- !u!114 &2873597095817418321
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6555,20 +6398,6 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   margen: 25
---- !u!114 &1054592178143896490
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3774938860916048055}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 911996f42c4e54443b5eb6d46bc37059, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ProgresoHUD
-  texto: {fileID: 2460421141133120632}
-  formato: Progreso {0}%
 --- !u!1 &3792785361541142041
 GameObject:
   m_ObjectHideFlags: 0
@@ -8787,7 +8616,6 @@ GameObject:
   - component: {fileID: 4846926967610348359}
   - component: {fileID: 976369424058754627}
   - component: {fileID: 3241763672082482961}
-  - component: {fileID: 3697416318719710617}
   m_Layer: 0
   m_Name: Modal_Ayuda
   m_TagString: Untagged
@@ -8920,24 +8748,6 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &3697416318719710617
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5136357931034960497}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc324324535430b44b9cc3cfef411d5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LoreUI
-  modal: {fileID: 3241763672082482961}
-  textoTitulo: {fileID: 8381033624178642729}
-  textoCuerpo: {fileID: 874089093399939982}
-  textoContador: {fileID: 0}
-  formatoContador: 'Fragmentos recuperados: {0} / {1}'
-  totalFragmentos: 4
 --- !u!1 &5143337081089724574
 GameObject:
   m_ObjectHideFlags: 0
@@ -9728,7 +9538,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: AbrirPausa
         m_Mode: 1
@@ -9860,7 +9670,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: AbrirPausa
         m_Mode: 1
@@ -10125,7 +9935,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 7116449460744675380}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: LoreUI, Assembly-CSharp
         m_MethodName: Cerrar
         m_Mode: 1
@@ -11443,9 +11253,6 @@ MonoBehaviour:
   modal: {fileID: 1683025430835765268}
   textoTitulo: {fileID: 3685099533396084076}
   textoCuerpo: {fileID: 6399975006650560448}
-  textoContador: {fileID: 3441641390175824294}
-  formatoContador: 'Fragmentos recuperados: {0} / {1}'
-  totalFragmentos: 4
 --- !u!1 &6666527077568746428
 GameObject:
   m_ObjectHideFlags: 0
@@ -11457,7 +11264,6 @@ GameObject:
   - component: {fileID: 5264148942594256542}
   - component: {fileID: 7419278658978832944}
   - component: {fileID: 2862724702644980292}
-  - component: {fileID: 5535540370202647403}
   m_Layer: 5
   m_Name: Detalle_Recursos
   m_TagString: Untagged
@@ -11528,51 +11334,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &5535540370202647403
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6666527077568746428}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f516e6821efeaa4b8e1b958dd12cba3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ResourceCodexUI
-  tarjetas:
-  - {fileID: 1639492880490465684}
-  - {fileID: 5358695695547644508}
-  - {fileID: 4999390235816734145}
-  fichas:
-  - titulo: Oro Puro
-    categoria: Metal de forja
-    cantidad: 3
-    descripcionUso: "Se funde en los altares de forja para reforzar el equipo de
-      Caelen y anclar engranajes r\xFAnicos."
-    lore: "\"El oro que no se dobla no sirve para una era que se rompe.\" \u2014
-      Grabado del \xC1rbol Sombr\xEDo"
-    colorFicha: {r: 0.83, g: 0.62, b: 0.18, a: 1}
-  - titulo: Cristales de Voto
-    categoria: Reliquia de juramento
-    cantidad: 5
-    descripcionUso: "Desbloquean nodos del \xE1rbol de habilidades elementales de
-      ambos h\xE9roes."
-    lore: "\"Cada voto dej\xF3 un cristal. Cada cristal recuerda una promesa incumplida.\"
-      \u2014 Mural del Templo Central"
-    colorFicha: {r: 0.36, g: 0.55, b: 0.9, a: 1}
-  - titulo: Esencias Elementales
-    categoria: Esencia de relieve
-    cantidad: 2
-    descripcionUso: 'Nutren habilidades avanzadas: las de Tierra provienen de la
-      roca viva; las de Madera, de la savia profunda.'
-    lore: "\"Ecos de una era olvidada: la piedra y la savia a\xFAn recuerdan qui\xE9n
-      las despert\xF3.\""
-    colorFicha: {r: 0.3, g: 0.78, b: 0.55, a: 1}
-  textoTitulo: {fileID: 8527800637803060846}
-  textoCategoria: {fileID: 989960458617453375}
-  textoCuerpo: {fileID: 1870402277517878380}
-  iconoDetalle: {fileID: 4676434819480998564}
 --- !u!1 &6734128550733974237
 GameObject:
   m_ObjectHideFlags: 0
@@ -12825,7 +12586,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8571053675931300395}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PauseMenuUI, Assembly-CSharp
         m_MethodName: Reanudar
         m_Mode: 1
@@ -14122,7 +13883,6 @@ GameObject:
   - component: {fileID: 6678948203014798298}
   - component: {fileID: 14798736661107788}
   - component: {fileID: 4503780053691689209}
-  - component: {fileID: 7116449460744675380}
   m_Layer: 0
   m_Name: "Modal_Configuraci\xF3n"
   m_TagString: Untagged
@@ -14255,21 +14015,3 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &7116449460744675380
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9134504680743299720}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc324324535430b44b9cc3cfef411d5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LoreUI
-  modal: {fileID: 4503780053691689209}
-  textoTitulo: {fileID: 1712240292636240662}
-  textoCuerpo: {fileID: 5867261402558170811}
-  textoContador: {fileID: 0}
-  formatoContador: 'Fragmentos recuperados: {0} / {1}'
-  totalFragmentos: 4

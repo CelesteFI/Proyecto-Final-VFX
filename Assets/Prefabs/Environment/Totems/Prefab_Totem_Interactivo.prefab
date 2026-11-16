@@ -213,7 +213,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3967959534940144833}
-  - component: {fileID: 8691009754851013593}
   - component: {fileID: 452104580046676989}
   m_Layer: 0
   m_Name: Prefab_Totem_Interactivo
@@ -239,23 +238,6 @@ Transform:
   - {fileID: 425028999987876118}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8691009754851013593
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5460072860764210122}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c4401d2f7f5a3d24d8d985e3d65c1d43, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HaloBrillo
-  visualHalo: {fileID: 3736597295595214896}
-  luzHalo: {fileID: 0}
-  intensidadMaxima: 1.4
-  velocidad: 4.5
-  amplitudPulso: 0.25
 --- !u!114 &452104580046676989
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -269,16 +251,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TotemLore
   idFragmento: N1_Fragmento_Piedra
-  titulo: El Voto de Piedra
-  cuerpo: "Los guardianes de basalto juraron sostener el mundo mientras hubiera alguien
-    que lo habitara. Cuando la corrupci\xF3n alcanz\xF3 el coraz\xF3n del bosque,
-    Caelen sell\xF3 su propia memoria en la piedra para no olvidar jam\xE1s por qu\xE9
-    luchaba.\n\nSu voto sigue vibrando en cada muro que erige: la tierra no pide
-    fe, pide constancia."
-  prompt: "Leer el fragmento r\xFAnico"
-  panelLore: {fileID: 0}
-  visual: {fileID: 4290457404415773745}
-  marcaLeido: {fileID: 0}
-  leido: 0
-  colorPendiente: {r: 1, g: 0.7, b: 0.12, a: 1}
-  colorLeido: {r: 1, g: 0.9, b: 0.58, a: 1}
+  mensajeEntrada: Presiona [F] para encender
+  visualesFuego: []
+  propiedadIntensidad: _Intensity
+  intensidadEncendido: 1
+  luzTotem: {fileID: 0}
+  intensidadLuz: 5
+  entrada: {fileID: 0}
+  gestor: {fileID: 0}
+  jugadorDentro: 0
+  yaEncendido: 0

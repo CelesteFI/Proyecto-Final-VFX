@@ -11,7 +11,8 @@ using UnityEngine.VFX;
 ///   1) reproduce la apertura de la jaula en el componente Legacy `Animation` de `Cage`;
 ///   2) al terminar la animación desactiva la jaula;
 ///   3) activa el VFX `Desaparecer_Jaula` y lo apaga pasados 3 s;
-///   4) dispara el trigger «Rescate» del Animator de Illya y la gira hacia el héroe.
+///   4) dispara el trigger «Rescate» del Animator de Illya y la gira hacia el héroe;
+///   5) mientras Illya habla, muestra su pista en el Banner_Instrucciones (no en el modal).
 /// Illya se queda estática en Idle: NO sigue a Caelen en esta escena.
 /// No crea ni destruye objetos: jaula, animador y banner ya existen en la escena.
 /// </summary>
@@ -30,9 +31,6 @@ public class CeldaDeRescate : MonoBehaviour
     [Header("Illya")]
     [SerializeField] private Transform illya;
     [SerializeField] private Animator animatorIllya;
-    [Tooltip("Script de seguimiento de Illya. En esta escena se fuerza a deshabilitado: " +
-             "Illya se queda en Idle junto a la jaula, no acompaña al héroe.")]
-    [SerializeField] private FollowPlayer seguidor;
     [Tooltip("Héroe al que Illya mira al ser liberada.")]
     [SerializeField] private Transform heroe;
     [SerializeField] private string triggerRescate = "Rescate";
@@ -58,6 +56,25 @@ public class CeldaDeRescate : MonoBehaviour
     [Tooltip("Tope de seguridad por si el clip no termina de reproducirse.")]
     [SerializeField] private float esperaMaximaAnimacion = 2f;
 
+    [Header("Pista de Illya (Banner_Instrucciones, NO el Modal_Pistas)")]
+    [Tooltip("Texto que se muestra en el banner mientras Illya reproduce su animación de hablar.")]
+    [TextArea(2, 4)]
+    [SerializeField] private string mensajePista = "Para escapar del bosque debemos resonar el elemento piedra en el tótem";
+    [Tooltip("Nombre del estado de hablar en el Animator de Illya (solo se lee, no se modifica).")]
+    [SerializeField] private string estadoHablar = "Hablar";
+    [Tooltip("Tamaño mínimo de fuente al ajustar la pista al banner (el máximo es el tamaño habitual del banner).")]
+    [SerializeField] private float tamanoMinimoPista = 14f;
+    [Tooltip("Segundos que el texto permanece tras terminar la animación, para poder leerlo. 0 = se oculta justo al acabar.")]
+    [SerializeField] private float segundosExtraPista = 2f;
+    [Tooltip("Tope de seguridad de la espera por el estado de hablar.")]
+    [SerializeField] private float esperaMaximaHablar = 6f;
+
+    [Header("Progreso del Nivel (HUD)")]
+    [Tooltip("Canvas_HUD del nivel. Recibe SumarProgreso cuando Illya queda liberada.")]
+    [SerializeField] private Canvas_HUD canvasHUD;
+    [Tooltip("Fracción (0..1) que suma a la Barra_Progreso al liberar a Illya.")]
+    [SerializeField] private float progresoAlLiberar = 0.1f;
+
     [Header("Requisito de Progreso")]
     [Tooltip("Si está activo, el rescate exige el hito del jefe del Nivel 1.")]
     [SerializeField] private bool requiereJefeDerrotado = false;
@@ -72,6 +89,7 @@ public class CeldaDeRescate : MonoBehaviour
     public bool PuedeInteractuar => !liberada && (jaula == null || jaula.activeInHierarchy);
 
     private Coroutine secuencia;
+    private Coroutine rutinaPista;
 
     private void Awake()
     {
@@ -162,7 +180,7 @@ public class CeldaDeRescate : MonoBehaviour
         secuencia = StartCoroutine(SecuenciaRescate());
     }
 
-    /// <summary>Compatibilidad con el interactuable histórico (HeroInteractor).</summary>
+    /// <summary>Punto de entrada público equivalente a Liberar() (por si un evento persistente lo invoca).</summary>
     public void Interactuar(Transform actor)
     {
         Liberar();
@@ -187,6 +205,9 @@ public class CeldaDeRescate : MonoBehaviour
         // El hito narrativo del rescate queda en el progreso (no habilita el relevo en esta escena).
         if (GameProgressManager.Instance != null) GameProgressManager.Instance.DesbloquearIllya(true);
 
+        // Señal de progreso al HUD: Illya liberada (la secuencia solo corre una vez).
+        if (canvasHUD != null) canvasHUD.SumarProgreso(progresoAlLiberar);
+
         // 3. VFX de desaparición de la jaula: Play() y apagado a los 3 s.
         LanzarVfxJaula();
         if (segundosVfx > 0f) yield return new WaitForSeconds(segundosVfx);
@@ -197,11 +218,82 @@ public class CeldaDeRescate : MonoBehaviour
         if (animatorIllya != null && !string.IsNullOrEmpty(triggerRescate)) animatorIllya.SetTrigger(triggerRescate);
         MirarAlHeroe();
 
-        // Illya NO es jugable ni acompaña al héroe en esta escena.
-        if (seguidor != null) seguidor.enabled = false;
+        // 5. Mientras Illya habla, el banner (no el modal) muestra la pista del siguiente paso.
+        if (rutinaPista != null) StopCoroutine(rutinaPista);
+        rutinaPista = StartCoroutine(MostrarPistaMientrasHabla());
+
+        // Illya NO es jugable ni acompaña al héroe en esta escena: se queda en Idle.
 
         secuencia = null;
         Debug.Log("[RESCATE] Illya liberada: la jaula se ha abierto y ella espera en Idle junto al altar.");
+    }
+
+    /// <summary>
+    /// Publica la pista en Banner_Instrucciones durante la animación de hablar de Illya. Solo
+    /// LEE el estado del Animator (no toca parámetros ni transiciones). El texto largo se
+    /// ajusta al banner con el auto-tamaño de TMP y los valores originales se restauran.
+    /// </summary>
+    private IEnumerator MostrarPistaMientrasHabla()
+    {
+        if (bannerInstrucciones == null || textoInstruccion == null || string.IsNullOrWhiteSpace(mensajePista))
+        {
+            rutinaPista = null;
+            yield break;
+        }
+
+        // El trigger se consume en el siguiente frame: se espera a que el Animator entre en 'Hablar'.
+        float limiteEntrada = Time.time + 1f;
+        while (animatorIllya != null && Time.time < limiteEntrada && !EstaHablando()) yield return null;
+
+        bool autoTamanoPrevio = textoInstruccion.enableAutoSizing;
+        float tamanoPrevio = textoInstruccion.fontSize;
+        float minimoPrevio = textoInstruccion.fontSizeMin;
+        float maximoPrevio = textoInstruccion.fontSizeMax;
+        string textoPrevio = textoInstruccion.text;
+
+        // Reduce la fuente solo lo necesario para que la frase quepa en el banner.
+        textoInstruccion.fontSizeMax = tamanoPrevio;
+        textoInstruccion.fontSizeMin = Mathf.Min(tamanoMinimoPista, tamanoPrevio);
+        textoInstruccion.enableAutoSizing = true;
+
+        float tope = Time.time + Mathf.Max(0.5f, esperaMaximaHablar);
+        while (Time.time < tope && animatorIllya != null && EstaHablando())
+        {
+            PublicarPista();
+            yield return null;
+        }
+
+        float finExtra = Time.time + Mathf.Max(0f, segundosExtraPista);
+        while (Time.time < finExtra)
+        {
+            PublicarPista();
+            yield return null;
+        }
+
+        // Restaura el banner tal como lo dejó el resto de sistemas.
+        textoInstruccion.enableAutoSizing = autoTamanoPrevio;
+        textoInstruccion.fontSizeMin = minimoPrevio;
+        textoInstruccion.fontSizeMax = maximoPrevio;
+        textoInstruccion.fontSize = tamanoPrevio;
+        if (textoInstruccion.text == mensajePista) textoInstruccion.text = textoPrevio;
+        OcultarBanner();
+
+        rutinaPista = null;
+    }
+
+    private void PublicarPista()
+    {
+        if (!bannerInstrucciones.activeSelf) bannerInstrucciones.SetActive(true);
+        if (textoInstruccion.text != mensajePista) textoInstruccion.text = mensajePista;
+    }
+
+    /// <summary>True si el Animator de Illya está en (o entrando a) el estado de hablar.</summary>
+    private bool EstaHablando()
+    {
+        if (animatorIllya == null || !animatorIllya.isActiveAndEnabled) return false;
+
+        if (animatorIllya.GetCurrentAnimatorStateInfo(0).IsName(estadoHablar)) return true;
+        return animatorIllya.IsInTransition(0) && animatorIllya.GetNextAnimatorStateInfo(0).IsName(estadoHablar);
     }
 
     /// <summary>Activa el VFX de la jaula y le da Play() (no instancia objetos).</summary>
@@ -285,8 +377,8 @@ public class CeldaDeRescate : MonoBehaviour
         return otro.GetComponentInParent<PlayerInputReader>() != null;
     }
 
-    /// <summary>Compatibilidad con el integrador histórico (la jaula sustituye a la puerta).</summary>
-    public void Configurar(PuzzleDoor puertaCelda, string llaveRequerida, string textoPrompt)
+    /// <summary>Compatibilidad con el integrador histórico: solo fija el texto del aviso.</summary>
+    public void Configurar(string textoPrompt)
     {
         if (!string.IsNullOrWhiteSpace(textoPrompt)) mensajeEntrada = textoPrompt;
     }

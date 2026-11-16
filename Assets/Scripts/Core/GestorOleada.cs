@@ -18,6 +18,12 @@ public class GestorOleada : MonoBehaviour
     [Tooltip("Solo se marca cuando TODOS los miembros han muerto.")]
     [SerializeField] private HitoJuego hitoAlCompletar = HitoJuego.EnemigoNivel1;
 
+    [Header("Progreso del Nivel (HUD)")]
+    [Tooltip("Canvas_HUD del nivel. Recibe SumarProgreso al morir el último enemigo de la arena.")]
+    [SerializeField] private Canvas_HUD canvasHUD;
+    [Tooltip("Fracción (0..1) que suma a la Barra_Progreso al completarse la arena.")]
+    [SerializeField] private float progresoAlCompletar = 0.1f;
+
     [Header("Consecuencias (inspector)")]
     [Tooltip("Se invoca una sola vez al completarse la oleada.")]
     [SerializeField] private UnityEvent alCompletar = new UnityEvent();
@@ -116,6 +122,9 @@ public class GestorOleada : MonoBehaviour
 
         GameProgressManager gm = GameProgressManager.Instance;
         if (gm != null) gm.MarcarHito(hitoAlCompletar);
+
+        // Señal de progreso al HUD: una sola vez, cuando murió el último enemigo.
+        if (canvasHUD != null) canvasHUD.SumarProgreso(progresoAlCompletar);
 
         alCompletar?.Invoke();
 

@@ -43,6 +43,12 @@ public class PuzzleRaicesCorruptas : MonoBehaviour
     [SerializeField] private float duracionSacudidaCamara = 0.28f;
     [SerializeField] private float fuerzaSacudidaCamara = 0.20f;
 
+    [Header("Progreso del Nivel (HUD)")]
+    [Tooltip("Canvas_HUD del nivel. Recibe SumarProgreso al resolverse el puzzle.")]
+    [SerializeField] private Canvas_HUD canvasHUD;
+    [Tooltip("Fracción (0..1) que suma a la Barra_Progreso al resolverse el puzzle.")]
+    [SerializeField] private float progresoAlResolver = 0.1f;
+
     [Header("Eventos")]
     [SerializeField] private UnityEvent alResolver = new UnityEvent();
     [SerializeField] private UnityEvent alResetear = new UnityEvent();
@@ -134,6 +140,9 @@ public class PuzzleRaicesCorruptas : MonoBehaviour
 
         if (GameProgressManager.Instance != null)
             GameProgressManager.Instance.puzzleRaicesNivel1Resuelto = true;
+
+        // Señal de progreso al HUD: el circuito de raíces queda resuelto (una sola vez).
+        if (canvasHUD != null) canvasHUD.SumarProgreso(progresoAlResolver);
 
         alResolver?.Invoke();
 

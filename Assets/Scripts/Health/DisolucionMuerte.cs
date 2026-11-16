@@ -61,7 +61,7 @@ public class DisolucionMuerte : MonoBehaviour
     public void Iniciar()
     {
         if (!isActiveAndEnabled) return;
-        if (rutina != null) StopCoroutine(rutina);
+        if (rutina != null) return;
         rutina = StartCoroutine(Rutina());
     }
 
@@ -107,6 +107,9 @@ public class DisolucionMuerte : MonoBehaviour
         {
             Renderer r = renderers[i];
             if (r == null) continue;
+
+            // Solo las mallas llevan el material de disolución (no VFX ni partículas).
+            if (!(r is MeshRenderer) && !(r is SkinnedMeshRenderer)) continue;
 
             Material[] materiales = r.sharedMaterials;
             if (materiales == null || materiales.Length == 0) continue;

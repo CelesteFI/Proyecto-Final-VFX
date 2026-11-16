@@ -68,7 +68,7 @@ public class CameraFollow : MonoBehaviour
     public bool RotacionPausada { get; set; }
 
     [Header("Derrota (referencia en el Player)")]
-    [SerializeField] private GestorDerrotaHeroe gestorDerrota;
+    [SerializeField] private TagTeamManager gestorDerrota;
 
     [Header("Entrada (asignada en el Inspector)")]
     [Tooltip("PlayerInputReader del Player. No se busca en runtime.")]

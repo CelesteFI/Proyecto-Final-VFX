@@ -12,8 +12,6 @@ GameObject:
   - component: {fileID: 6519042059047264563}
   - component: {fileID: 4958463928617378000}
   - component: {fileID: 1180631425408190272}
-  - component: {fileID: 8507269802649133054}
-  - component: {fileID: 8004181799959914540}
   - component: {fileID: 844615664732315485}
   m_Layer: 0
   m_Name: Muro_Basalto_Habilidad
@@ -115,31 +113,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8507269802649133054
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6345076048994523138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72e719ba02af45c40b8ff43f20a2476c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TemporarySummon
-  lifeTime: 6.5
---- !u!114 &8004181799959914540
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6345076048994523138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 948c4e374595eef4db30d96b691e5912, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MarcadorMuroBasalto
 --- !u!54 &844615664732315485
 Rigidbody:
   m_ObjectHideFlags: 0

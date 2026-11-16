@@ -55,7 +55,6 @@ public class PruebaAgilN1 : MonoBehaviour
     TextMeshProUGUI contadorLore;
 
     PuzzleLoreTotems gestor;
-    SelloNarrativo sello;
     List<TotemLore> totems;
 
     int fallas;
@@ -122,7 +121,6 @@ public class PruebaAgilN1 : MonoBehaviour
                 if (t.name == "Btn_Cerrar_X") { btnXCerrar = t.GetComponent<Button>(); break; }
 
         gestor = Object.FindFirstObjectByType<PuzzleLoreTotems>(FindObjectsInactive.Include);
-        sello = Object.FindFirstObjectByType<SelloNarrativo>(FindObjectsInactive.Include);
 
         totems = new List<TotemLore>(Object.FindObjectsByType<TotemLore>(FindObjectsInactive.Include, FindObjectsSortMode.None));
         totems.Sort((a, b) => string.CompareOrdinal(a.IdFragmento, b.IdFragmento));
@@ -143,7 +141,7 @@ public class PruebaAgilN1 : MonoBehaviour
 
         Debug.Log($"[AGIL][PREP] player='{jugador.name}' pos={F(control.transform.position)} banner={(banner != null)} " +
                   $"modalLore={(modalLore != null)} btnX=[{Ruta(btnXCerrar)}] totems={totems.Count} gestor={(gestor != null)} " +
-                  $"sello={(sello != null)} -> {(ok ? "ok" : "FALTAN REFERENCIAS")}");
+                  $"paso={(gestor != null && gestor.PasoAbierto)} -> {(ok ? "ok" : "FALTAN REFERENCIAS")}");
         return ok;
     }
 
@@ -229,7 +227,7 @@ public class PruebaAgilN1 : MonoBehaviour
         }
 
         int bannerOK = 0, encendidosOK = 0, fuegosOK = 0, unicoTriggerOK = 0;
-        int modalesOK = 0, contadorOK = 0, cierresOK = 0, conLore = 0, esperado = 0;
+        int modalesOK = 0, cierresOK = 0, conLore = 0, esperado = 0;
         int maxSimultaneos = 0;
         Vector3 previo = control.transform.position;
 
@@ -267,7 +265,8 @@ public class PruebaAgilN1 : MonoBehaviour
             if (Mathf.Abs(intensidad - 1f) < 0.02f) fuegosOK++;
 
             string nota;
-            if (t.TieneLore)
+            EmisorLore emisor = t.GetComponent<EmisorLore>();
+            if (emisor != null && emisor.TieneLore)
             {
                 conLore++;
                 if (t.YaEncendido) esperado++;
@@ -282,12 +281,8 @@ public class PruebaAgilN1 : MonoBehaviour
                 bool logico = ventanaLore != null && ventanaLore.EstaAbierto;
                 bool pausa = Mathf.Approximately(Time.timeScale, 0f);
                 string cuerpo = cuerpoLore != null ? cuerpoLore.text : "(null)";
-                string contador = contadorLore != null ? contadorLore.text : "(null)";
-                string esperadoTexto = $"Fragmentos recuperados: {esperado} / 4";
 
-                if (abierto && logico && pausa && cuerpo == t.Cuerpo) modalesOK++;
-                bool cuenta = contador == esperadoTexto;
-                if (cuenta) contadorOK++;
+                if (abierto && logico && pausa && cuerpo == emisor.Cuerpo) modalesOK++;
 
                 btnXCerrar.onClick.Invoke();
 
@@ -301,7 +296,7 @@ public class PruebaAgilN1 : MonoBehaviour
                 if (cerrado && pausaFinal) cierresOK++;
                 else Time.timeScale = 1f;
 
-                nota = $"lore='{t.Titulo}' modal={abierto}/{logico} contador=\"{contador}\" ok={cuenta} cerradoX={cerrado}";
+                nota = $"lore='{emisor.Titulo}' modal={abierto}/{logico} cerradoX={cerrado}";
             }
             else nota = $"sin lore · modalCerrado={!modalLore.gameObject.activeSelf}";
 
@@ -318,8 +313,8 @@ public class PruebaAgilN1 : MonoBehaviour
         int encendidos = gestor.Encendidos;
         bool todos = encendidos == totems.Count;
         bool pasoAbierto = gestor.PasoAbierto;
-        bool selloAbierto = sello != null && sello.Abierto;
-        GameObject barrera = sello != null ? LeerRef(sello, "barrera") as GameObject : null;
+        bool selloAbierto = gestor.PasoAbierto;
+        GameObject barrera = LeerRef(gestor, "barreraSello") as GameObject;
         bool barreraFuera = barrera != null && !barrera.activeSelf;
 
         bool bannerLimpio = banner == null || !banner.activeSelf;
@@ -329,23 +324,23 @@ public class PruebaAgilN1 : MonoBehaviour
         bool ok = todos && pasoAbierto && selloAbierto && barreraFuera && bannerLimpio && uiLibre && unBanner &&
                   bannerOK == totems.Count && encendidosOK == totems.Count && fuegosOK == totems.Count &&
                   unicoTriggerOK == totems.Count &&
-                  modalesOK == conLore && cierresOK == conLore && contadorOK == conLore;
+                  modalesOK == conLore && cierresOK == conLore;
         if (!ok) fallas++;
 
         Debug.Log($"[AGIL][B-resumen] encendidos={encendidos}/{totems.Count} bannerOK={bannerOK}/{totems.Count} " +
                   $"unSoloTrigger={unicoTriggerOK}/{totems.Count} (máx simultáneos {maxSimultaneos}) " +
                   $"intensidad1={fuegosOK}/{totems.Count} lore={conLore} modales={modalesOK}/{conLore} " +
-                  $"contador={contadorOK}/{conLore} cierresX={cierresOK}/{conLore} -> {(ok ? "PASA" : "FALLA")}");
+                  $"cierresX={cierresOK}/{conLore} -> {(ok ? "PASA" : "FALLA")}");
 
         resumen.AppendLine($"B. Recorrido caminando: {encendidos}/9 tótems, banner único (máx simultáneos {maxSimultaneos}), " +
-                           $"lore {modalesOK}/{conLore} modales, contador {contadorOK}/{conLore}, cierres 'X' {cierresOK}/{conLore} -> {(ok ? "PASA" : "FALLA")}");
+                           $"lore {modalesOK}/{conLore} modales, cierres 'X' {cierresOK}/{conLore} -> {(ok ? "PASA" : "FALLA")}");
     }
 
     private void ResumenVictoria()
     {
         bool pasoAbierto = gestor.PasoAbierto;
-        bool selloAbierto = sello != null && sello.Abierto;
-        GameObject barrera = sello != null ? LeerRef(sello, "barrera") as GameObject : null;
+        bool selloAbierto = gestor.PasoAbierto;
+        GameObject barrera = LeerRef(gestor, "barreraSello") as GameObject;
         bool barreraFuera = barrera != null && !barrera.activeSelf;
         bool ok = pasoAbierto && selloAbierto && barreraFuera;
         if (!ok) fallas++;

@@ -20,6 +20,7 @@ public class HitstopManager : MonoBehaviour
     {
         Time.timeScale = 0f;
         yield return new WaitForSecondsRealtime(duration);
-        Time.timeScale = 1f;
+        // Si un modal se abrió durante el congelado, el tiempo debe seguir en 0.
+        Time.timeScale = UIModalWindow.HayModalAbierto ? 0f : 1f;
     }
 }

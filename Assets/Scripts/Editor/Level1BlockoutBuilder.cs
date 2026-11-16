@@ -248,7 +248,7 @@ public class Level1BlockoutBuilder : EditorWindow
         var tagTeam = player.GetComponent<TagTeamManager>();
         var follow = camera.GetComponent<CameraFollow>();
         var body = enemy.GetComponent<Rigidbody>();
-        var health = enemy.GetComponent<HealthSystem>();
+        var health = enemy.GetComponent<HealthComponent>();
         var surface = root.GetComponent<Unity.AI.Navigation.NavMeshSurface>();
         if (controller == null || player.GetComponent<PlayerController>() == null || tagTeam == null || follow == null || body == null || health == null || surface == null)
             throw new System.InvalidOperationException("Faltan componentes requeridos.");
@@ -267,9 +267,6 @@ public class Level1BlockoutBuilder : EditorWindow
         body.isKinematic = false;
         body.useGravity = true;
         body.constraints = RigidbodyConstraints.FreezeRotation;
-        health.maxHealth = 100f;
-        health.currentHealth = 100f;
-        health.flashColor = Color.white;
         enemy.GetComponent<MeshRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Enemigo.mat");
 
         // Reutilizar la cápsula existente y alinear su imagen con Center Y = 1.
@@ -289,20 +286,8 @@ public class Level1BlockoutBuilder : EditorWindow
             Undo.DestroyObjectImmediate(originalRenderer);
             Undo.DestroyObjectImmediate(originalMesh);
         }
-        if (tagTeam.attackPoint == null)
-        {
-            GameObject point = new GameObject("AttackPoint");
-            Undo.RegisterCreatedObjectUndo(point, "Enlazar AttackPoint");
-            point.transform.SetParent(player.transform, false);
-            point.transform.localPosition = new Vector3(0f, 1f, 1.2f);
-            point.layer = player.layer;
-            tagTeam.attackPoint = point.transform;
-        }
-        tagTeam.enemyLayers = LayerMask.GetMask("Default");
-        tagTeam.vfxRockWallPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/VFX/Muro_Basalto_Habilidad.prefab");
         tagTeam.caelen.currentHealth = tagTeam.caelen.maxHealth;
         tagTeam.illya.currentHealth = tagTeam.illya.maxHealth;
-        tagTeam.illya.proxyColor = new Color(0.25f, 0.65f, 0.35f);
         follow.target = player.transform;
         follow.targetOffset = new Vector3(0f, 1.8f, 0f);
         follow.pivoteMirada = new Vector3(0f, 1.3f, 0f);
@@ -357,7 +342,7 @@ public class Level1BlockoutBuilder : EditorWindow
         EditorUtility.SetDirty(surface);
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
         AssetDatabase.SaveAssets();
-        Debug.Log($"Entrega configurada: Player y dummy en Arena A, EnemyLayers={tagTeam.enemyLayers.value}, CollisionLayers={follow.collisionLayers.value}, suelos={groundCount}, triángulos NavMesh={UnityEngine.AI.NavMesh.CalculateTriangulation().indices.Length / 3}, datos={dataPath}.");
+        Debug.Log($"Entrega configurada: Player y dummy en Arena A, CollisionLayers={follow.collisionLayers.value}, suelos={groundCount}, triángulos NavMesh={UnityEngine.AI.NavMesh.CalculateTriangulation().indices.Length / 3}, datos={dataPath}.");
     }
 
     private static Material ObtenerOMaterial(string nombre, Color colorBase)

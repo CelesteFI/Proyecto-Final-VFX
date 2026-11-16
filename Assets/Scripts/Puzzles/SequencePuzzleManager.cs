@@ -17,7 +17,6 @@ public class SequencePuzzleManager : MonoBehaviour
     [SerializeField] private float tiempoLimite = 18f;
 
     [Header("Recompensa")]
-    [SerializeField] private PuzzleDoor puerta;
     [SerializeField] private UnityEvent alResolver = new UnityEvent();
     [SerializeField] private UnityEvent alFallar = new UnityEvent();
 
@@ -91,7 +90,6 @@ public class SequencePuzzleManager : MonoBehaviour
 
         Debug.Log("[PUZZLE] Secuencia resuelta: las losas del puente se elevan.");
 
-        if (puerta != null) puerta.AbrirPermanentemente();
         alResolver?.Invoke();
     }
 
@@ -137,11 +135,5 @@ public class SequencePuzzleManager : MonoBehaviour
         secuencia = elementos;
         tiempoLimite = limite;
         ReiniciarSecuencia();
-    }
-
-    /// <summary>Asigna la puerta que se abre al resolver.</summary>
-    public void AsignarPuerta(PuzzleDoor nuevaPuerta)
-    {
-        puerta = nuevaPuerta;
     }
 }
