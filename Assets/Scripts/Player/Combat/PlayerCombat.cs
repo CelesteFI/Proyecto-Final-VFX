@@ -21,13 +21,12 @@ using UnityEngine.Serialization;
 ///       destruye la instancia antes de tiempo. Sin contacto, aplica el daño ciego
 ///       original al final del recorrido.
 ///
-///   Clic izquierdo sostenido (solo Illya)
-///     Proyecta el puntero al mundo (suelo, enemigo o AIRE) y coloca ahí la retícula;
-///     la Q dispara hacia ese punto. Al soltar el clic la retícula desaparece.
 ///   Clic derecho (especial)
 ///     · Caelen: instancia 'AtaqueEspecial_Caelen' en 'puntoEspecialCaelen'.
 ///     · Illya: instancia 'AtaqueEspecial_Illya' en 'puntoEspecialIllya'.
 ///       El interior de esos prefabs lo gestiona el usuario; aquí solo se instancian.
+///       Ambos se invocan con la rotación ORIGINAL del prefab (prefab.transform.rotation),
+///       nunca con Quaternion.identity, para que las raíces/rocas no aparezcan acostadas.
 ///
 /// Además es la única fuente de cooldowns hacia el HUD: cada frame envía a Canvas_HUD el
 /// progreso real del Dash (PlayerController), de la Q y de la habilidad especial.
@@ -84,16 +83,6 @@ public class PlayerCombat : MonoBehaviour
     [Tooltip("Segundos extra (tras el Start Lifetime) que se conserva la instancia para que el Sub-Emitter termine su explosión.")]
     [SerializeField] private float margenLimpiezaProyectil = 3f;
 
-    [Header("Apuntado Direccional (Illya · clic izquierdo sostenido)")]
-    [Tooltip("Objeto del mundo que marca el punto de mira mientras se mantiene el clic izquierdo.")]
-    [SerializeField] private Transform reticula;
-    [Tooltip("Cámara con la que se proyecta el puntero al mundo. Normalmente la Main Camera.")]
-    [SerializeField] private Camera camaraApuntado;
-    [Tooltip("Capas válidas para el rayo de apuntado. Los triggers se ignoran: la retícula puede quedar en el aire.")]
-    [SerializeField] private LayerMask capasApuntado = ~0;
-    [Tooltip("Distancia máxima (m) a la que puede colocarse la retícula cuando el rayo no toca nada.")]
-    [SerializeField] private float alcanceApuntado = 80f;
-
     [Header("Proyectil · impacto en vuelo")]
     [Tooltip("Capas que puede golpear el proyectil. El terreno no lo detiene: solo cuenta lo que tenga IDamageable o IGolpeableElemental.")]
     [SerializeField] private LayerMask capasImpactoProyectil = ~0;
@@ -115,9 +104,6 @@ public class PlayerCombat : MonoBehaviour
     private PlayerController locomocion;
     private Canvas_HUD canvasHUD;
     private float temporizadorAtaque;
-
-    private Vector3 puntoApuntado;
-    private bool apuntando;
 
     private readonly HashSet<int> raicesProcesadas = new HashSet<int>();
 
@@ -148,7 +134,6 @@ public class PlayerCombat : MonoBehaviour
         EnfriarHabilidad(tagTeam.illya);
 
         EnviarCooldownsAlHUD();
-        ActualizarApuntado();
 
         // Ninguna acción de combate se dispara con el puntero sobre la interfaz.
         if (PunteroSobreUI()) return;
@@ -344,14 +329,6 @@ public class PlayerCombat : MonoBehaviour
         Transform origen = PuntoAtaqueNormal();
         Vector3 direccion = DireccionDisparo();
 
-        // Illya gira hacia el punto apuntado antes de disparar (el plano horizontal es
-        // el que manda en la rotación: el báculo apunta arriba, el cuerpo no).
-        if (apuntando)
-        {
-            Vector3 plano = new Vector3(direccion.x, 0f, direccion.z);
-            if (plano.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(plano.normalized);
-        }
-
         Vector3 posicion = ((origen != null) ? origen.position : transform.position + Vector3.up * 1.5f)
                            + direccion * desplazamientoOrigenProyectil
                            + Vector3.up * elevacionOrigenProyectil;
@@ -485,26 +462,12 @@ public class PlayerCombat : MonoBehaviour
         Debug.Log($"[COMBATE] Proyectil de {heroe.heroName} impactó en vuelo contra {objetivo.name}.");
     }
 
-    /// <summary>Punto del que nace el proyectil de Illya.</summary>
-    private Vector3 PuntoBoca()
-    {
-        Transform ancla = PuntoAtaqueNormal();
-        return (ancla != null) ? ancla.position : transform.position + Vector3.up * 1.5f;
-    }
-
     /// <summary>
-    /// Dirección del disparo. Con el clic izquierdo sostenido apunta al punto del mundo
-    /// marcado por la retícula (puede estar en el aire); si no, dispara hacia su frente
-    /// horizontal, como siempre.
+    /// Dirección del disparo: SIEMPRE el frente horizontal del personaje. Illya ya no
+    /// apunta con el cursor; el proyectil sale del báculo hacia delante.
     /// </summary>
     private Vector3 DireccionDisparo()
     {
-        if (apuntando)
-        {
-            Vector3 haciaReticula = puntoApuntado - PuntoBoca();
-            if (haciaReticula.sqrMagnitude > 0.0004f) return haciaReticula.normalized;
-        }
-
         Vector3 adelante = transform.forward;
         adelante.y = 0f;
 
@@ -522,51 +485,6 @@ public class PlayerCombat : MonoBehaviour
             return Quaternion.LookRotation(normalizada, Vector3.forward);
 
         return Quaternion.LookRotation(normalizada);
-    }
-
-    // ------------------------------------------------------------------
-    // APUNTADO DIRECCIONAL (CLIC IZQUIERDO SOSTENIDO)
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// Mientras Illya mantiene el clic izquierdo, el puntero se proyecta al mundo —suelo,
-    /// enemigo o AIRE, no se restringe al suelo— y la retícula marca ese punto. Al soltar
-    /// el clic la retícula desaparece.
-    /// </summary>
-    private void ActualizarApuntado()
-    {
-        if (entrada == null) return;
-
-        apuntando = !EsCaelenActivo && entrada.ApuntadoMantenido;
-
-        if (apuntando)
-        {
-            puntoApuntado = PuntoBajoRaton();
-
-            if (reticula != null)
-            {
-                if (!reticula.gameObject.activeSelf) reticula.gameObject.SetActive(true);
-                reticula.position = puntoApuntado;
-                if (camaraApuntado != null) reticula.rotation = camaraApuntado.transform.rotation;
-            }
-
-            return;
-        }
-
-        if (reticula != null && reticula.gameObject.activeSelf) reticula.gameObject.SetActive(false);
-    }
-
-    /// <summary>Punto del mundo bajo el puntero, sin límite de altura.</summary>
-    private Vector3 PuntoBajoRaton()
-    {
-        if (camaraApuntado == null) return transform.position + transform.forward * alcanceApuntado;
-
-        Ray rayo = camaraApuntado.ScreenPointToRay(entrada.PosicionRaton);
-
-        if (Physics.Raycast(rayo, out RaycastHit golpe, alcanceApuntado, capasApuntado, QueryTriggerInteraction.Ignore))
-            return golpe.point;
-
-        return rayo.origin + rayo.direction * alcanceApuntado;
     }
 
     // ------------------------------------------------------------------
@@ -605,7 +523,12 @@ public class PlayerCombat : MonoBehaviour
         }
 
         Vector3 posicion = PuntoEspecial(transform.position + transform.forward * distanciaMuro);
-        InstanciarEspecial(AtaqueEspecial_Caelen, posicion, transform.rotation);
+        GameObject muro = InstanciarEspecial(AtaqueEspecial_Caelen, posicion);
+
+        // Parenting dinámico: el muro se cuelga del ancla de Caelen, de modo que si el héroe
+        // rota, el ataque rota con él. worldPositionStays conserva el sitio donde nació.
+        if (muro != null && puntoEspecialCaelen != null)
+            muro.transform.SetParent(puntoEspecialCaelen, true);
 
         // El muro emerge del suelo: el golpe de tierra daña lo que pilla delante.
         bool golpeoElemental;
@@ -624,7 +547,7 @@ public class PlayerCombat : MonoBehaviour
         Vector3 centro = PuntoEspecial(transform.position);
 
         if (AtaqueEspecial_Illya != null)
-            InstanciarEspecial(AtaqueEspecial_Illya, centro, Quaternion.identity);
+            InstanciarEspecial(AtaqueEspecial_Illya, centro);
         else
             Debug.LogWarning("[COMBATE] AtaqueEspecial_Illya no tiene prefab asignado.");
 
@@ -699,13 +622,21 @@ public class PlayerCombat : MonoBehaviour
     }
 
     /// <summary>
-    /// Instancia el prefab del ataque especial tal cual, sin tocar su interior. Solo si
-    /// 'vidaInstanciaEspecial' &gt; 0 se limpia la instancia pasado ese tiempo.
+    /// Instancia el prefab del ataque especial tal cual, sin tocar su interior, y SIEMPRE
+    /// con la rotación original del prefab (prefab.transform.rotation): los modelos de
+    /// raíces y rocas traen su orientación cocida, así que usar Quaternion.identity los
+    /// sacaría acostados. Solo si 'vidaInstanciaEspecial' &gt; 0 se limpia la instancia.
+    /// Devuelve la instancia para que el llamante decida si la emparenta (Caelen) o la deja
+    /// fija en el mundo (Illya).
     /// </summary>
-    private void InstanciarEspecial(GameObject prefab, Vector3 posicion, Quaternion rotacion)
+    private GameObject InstanciarEspecial(GameObject prefab, Vector3 posicion)
     {
-        GameObject instancia = Instantiate(prefab, posicion, rotacion);
+        if (prefab == null) return null;
+
+        GameObject instancia = Instantiate(prefab, posicion, prefab.transform.rotation);
         if (vidaInstanciaEspecial > 0f) Destroy(instancia, vidaInstanciaEspecial);
+
+        return instancia;
     }
 
     /// <summary>Instancia un VFX de impacto autodestruible y orientado.</summary>

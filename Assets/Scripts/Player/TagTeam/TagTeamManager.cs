@@ -253,7 +253,8 @@ public class TagTeamManager : MonoBehaviour
         // 2. Los cooldowns de habilidad de ambos héroes los gestiona PlayerCombat.
 
         // 3. Atajo de reinicio ('R') mientras la pantalla de derrota está en pantalla.
-        if (derrotaActiva && entrada != null && entrada.ReinicioPulsado) Reaparecer();
+        //    Desde la derrota se vuelve a empezar la partida: Nivel 1 y progreso a cero.
+        if (derrotaActiva && entrada != null && entrada.ReinicioPulsado) ReiniciarDesdeCero();
     }
 
     /// <summary>
@@ -480,12 +481,16 @@ public class TagTeamManager : MonoBehaviour
     }
 
     /// <summary>
-    /// REINICIO TOTAL DEL NIVEL (hard reset). El botón 'Btn_Reiniciar' del modal y la
-    /// tecla 'R' llaman aquí: se recarga la escena activa completa, de modo que tótems,
-    /// VFX, enemigos y estados de Idle vuelven al estado horneado en el editor.
+    /// REINICIO DEL NIVEL ACTUAL (botón 'Btn_Reiniciar_Nivel' del Modal_Pausa): recarga la
+    /// escena activa devolviendo el progreso al punto de partida DEL NIVEL en el que se está.
+    /// En el Nivel 1 se borra todo; en el Nivel 2 solo se reinician sus hitos, de modo que el
+    /// avance conseguido en el Nivel 1 se conserva. La Barra_Progreso recibe el valor inicial
+    /// del nivel antes de cargar la escena.
     /// </summary>
     public void Reaparecer()
     {
+        bool enNivel1 = (canvasHUD == null) || canvasHUD.esNivel1;
+
         // ANTES de recargar: el tiempo vuelve a 1 y el contador de modales a 0, para que la
         // escena nueva jamás arranque congelada (softlock) aunque haya un modal abierto.
         UIModalWindow.ReiniciarPausa();
@@ -493,11 +498,45 @@ public class TagTeamManager : MonoBehaviour
 
         if (entrada != null) entrada.EntradaBloqueada = false;
 
-        GameSaveState.BorrarTodo();
+        derrotaActiva = false;
+        rutinaDerrotaEnCurso = false;
 
-        if (GameProgressManager.Instance != null) GameProgressManager.Instance.ResetearProgreso();
+        if (enNivel1)
+        {
+            GameSaveState.BorrarTodo();
+            if (GameProgressManager.Instance != null) GameProgressManager.Instance.ResetearProgreso();
+        }
+        else if (GameProgressManager.Instance != null)
+        {
+            GameProgressManager.Instance.ResetearProgresoNivel2();
+        }
+
+        if (canvasHUD != null) canvasHUD.AplicarProgresoInicial(GameProgressManager.ProgresoInicialDeNivel(enNivel1));
 
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>
+    /// REINICIO TOTAL DE LA PARTIDA ('Volver a jugar' del Modal_Derrota y tecla 'R' en la
+    /// pantalla de derrota): todas las variables de progreso vuelven a 0/false, la
+    /// Barra_Progreso recibe 0 y se carga el Nivel 1.
+    /// </summary>
+    public void ReiniciarDesdeCero()
+    {
+        UIModalWindow.ReiniciarPausa();
+        Time.timeScale = 1f;
+
+        if (entrada != null) entrada.EntradaBloqueada = false;
+
+        derrotaActiva = false;
+        rutinaDerrotaEnCurso = false;
+
+        GameSaveState.BorrarTodo();
+        if (GameProgressManager.Instance != null) GameProgressManager.Instance.ResetearProgreso();
+
+        if (canvasHUD != null) canvasHUD.AplicarProgresoInicial(GameProgressManager.ProgresoInicialDeNivel(true));
+
+        SceneManager.LoadScene("Maqueta Nivel 1");
     }
 
     /// <summary>

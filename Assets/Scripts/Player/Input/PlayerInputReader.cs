@@ -40,15 +40,6 @@ public class PlayerInputReader : MonoBehaviour
     public bool HabilidadPulsada { get; private set; }
     public bool InteraccionPulsada { get; private set; }
 
-    /// <summary>
-    /// Clic izquierdo SOSTENIDO. Illya lo usa para apuntar en el aire con la retícula
-    /// mientras se mantiene pulsado; el clic sigue sin disparar nada por sí mismo.
-    /// </summary>
-    public bool ApuntadoMantenido { get; private set; }
-
-    /// <summary>Posición del puntero en píxeles de pantalla del frame actual.</summary>
-    public Vector2 PosicionRaton { get; private set; }
-
     /// <summary>Apertura del menú de pausa con 'Escape'. 'Espacio' no interviene.</summary>
     public bool PausaPulsada { get; private set; }
 
@@ -143,10 +134,6 @@ public class PlayerInputReader : MonoBehaviour
         // El bloqueo por hover sobre la UI lo aplica CameraFollow con la misma guarda.
         deltaRaton = (raton != null) ? raton.delta.ReadValue() : Vector2.zero;
 
-        // ---- Apuntado direccional de Illya: clic izquierdo sostenido ----
-        PosicionRaton = (raton != null) ? raton.position.ReadValue() : Vector2.zero;
-        ApuntadoMantenido = !bloqueada && !sobreUI && raton != null && raton.leftButton.isPressed;
-
         // ---- Menú de pausa: exclusivamente Escape ----
         PausaPulsada = teclado.escapeKey.wasPressedThisFrame;
 
@@ -187,7 +174,6 @@ public class PlayerInputReader : MonoBehaviour
         AtaquePulsado = false;
         HabilidadPulsada = false;
         InteraccionPulsada = false;
-        ApuntadoMantenido = false;
         PausaPulsada = false;
         ReinicioPulsado = false;
         RelevoPulsado = false;

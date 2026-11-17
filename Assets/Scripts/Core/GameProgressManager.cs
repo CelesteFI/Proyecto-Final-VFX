@@ -220,4 +220,30 @@ public class GameProgressManager : MonoBehaviour
 
         Debug.Log("[PROGRESO] Progreso reiniciado a cero.");
     }
+
+    /// <summary>
+    /// Devuelve SOLO el progreso del Nivel 2 a su estado de partida (reinicio desde Pausa
+    /// estando en el Nivel 2). Se conservan los hitos, el relevo y el desbloqueo del
+    /// Nivel 1, porque esa partida sigue en curso.
+    /// </summary>
+    public void ResetearProgresoNivel2()
+    {
+        enemigoNivel2Derrotado = false;
+        puzzleTemploNivel2Resuelto = false;
+        bossNivel2Derrotado = false;
+
+        toberaEolicaActivada = false;
+        monolitoNivel2Sincronizado = false;
+        altarPurificadoNivel2 = false;
+
+        objetosRecogidos.Clear();
+
+        Debug.Log("[PROGRESO] Progreso del Nivel 2 reiniciado; se conserva el avance del Nivel 1.");
+    }
+
+    /// <summary>Porcentaje con el que arranca cada nivel: 0 % el Nivel 1 y 50 % el Nivel 2.</summary>
+    public static float ProgresoInicialDeNivel(bool esNivel1)
+    {
+        return esNivel1 ? 0f : 0.5f;
+    }
 }

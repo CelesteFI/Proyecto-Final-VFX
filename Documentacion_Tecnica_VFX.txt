@@ -1,0 +1,1231 @@
+================================================================================
+DOCUMENTACION TECNICA — PROYECTO FINAL VFX
+"Ecos de la Era Olvidada" — Maqueta jugable Nivel 1 + Nivel 2
+================================================================================
+
+Ruta del proyecto ....... C:\Unity\Proyecto Final VFX
+Motor ................... Unity 6000.3.22f1
+Render pipeline ......... Universal Render Pipeline (URP) 17.3.0
+Input ................... com.unity.inputsystem 1.20.1 (New Input System)
+Serializacion ........... Binaria (Force Binary) — las escenas y prefabs NO son
+                          grep-ables en YAML; toda lectura se hace por API.
+Escenas en Build ........ [0] Assets/Scenes/Maqueta Nivel 1.unity  (habilitada)
+                          [1] Assets/Scenes/Maqueta Nivel 2.unity  (habilitada)
+Escena auxiliar ......... Assets/Scenes/Samples.unity (NO esta en Build Settings)
+
+Este documento describe la arquitectura REAL del codigo en disco, no la prevista.
+Cada afirmacion procede de la lectura del script correspondiente o del volcado
+de escenas/prefabs del proyecto.
+
+
+================================================================================
+1. CONFIGURACION DE PROYECTO
+================================================================================
+
+1.1 TAGS PERSONALIZADOS
+--------------------------------------------------------------------------------
+Tag                | Proposito en el codigo
+-------------------+------------------------------------------------------------
+Player             | Contrato universal de "esto es el jugador". Lo consultan
+                   | TODOS los detectores de trigger mediante EsJugador():
+                   |   otro.CompareTag("Player")  ->  ActivadorPortal,
+                   |   CeldaDeRescate, CofreRecompensa, MonolitoPista,
+                   |   LogicaPilar, GestorObeliscos, TotemLore, TransicionAltarNivel1
+                   | Tambien es el respaldo de EnemyAI.ResolverObjetivo()
+                   | (FindGameObjectWithTag) cuando no hay TagTeamManager.
+MainCamera         | Etiqueta estandar de la camara principal. No se usa
+                   | Camera.main en ningun script (la referencia se asigna a mano).
+Respawn            | Reservado para puntos de reaparicion. Sin consumidores activos
+                   | en el codigo actual (la reubicacion la hacen PlayerController.
+                   | Reubicar y ZonaDeAbismo).
+Finish             | Reservado para meta de nivel. Sin consumidores activos: la
+                   | transicion real la arbitra TransicionAltarNivel1 (trigger).
+GameController     | Reservado para gestores globales. Sin consumidores activos.
+Untagged/EditorOnly| Estandar de Unity.
+
+Nota de diseno: el reconocimiento del jugador NO depende del tag. Todos los
+scripts usan un predicado de dos vias:
+    otro.CompareTag("Player")  ||  otro.GetComponentInParent<PlayerInputReader>() != null
+Esto hace que el sistema siga funcionando aunque un collider hijo pierda el tag.
+
+
+1.2 LAYERS
+--------------------------------------------------------------------------------
+Indice | Nombre           | Proposito
+-------+------------------+---------------------------------------------------
+   0   | Default          | Todo lo no clasificado. Es la mascara por defecto de
+       |                  | PlayerCombat.capasAfectadas (=1).
+   1   | TransparentFX    | Estandar URP.
+   2   | Ignore Raycast   | Estandar.
+   4   | Water            | Estandar. Reservado para lagos; en la auditoria de
+       |                  | fisicas se EXCLUYO el agua de la generacion de colliders.
+   5   | UI               | Estandar UGUI. EventSystem y Canvas.
+   8   | Player           | Capa del heroe. EnemyAI.capasGolpe = 1 << 8 por defecto:
+       |                  | la hitbox esferica del enemigo SOLO busca esta capa.
+       |                  | EnemyAI.EjecutarGolpe ademas valida la capa como
+       |                  | criterio alternativo de "esHeroe".
+   9   | Environment      | Entorno fisico (islas, templo, rocas, puentes). Los
+       |                  | tramos Puente_Fisico_Cofre_TramoA/B del Nivel 2 estan en
+       |                  | esta capa.
+  10   | Puzzle           | Elementos de puzzle golpeables (flores, totems,
+       |                  | obeliscos). Los colliders de las Flores_Puzzle deben
+       |                  | estar aqui para que el barrido del proyectil de Illya
+       |                  | (capasImpactoProyectil) las detecte.
+
+Regla practica: el combate filtra por LayerMask, no por tipo de componente; el
+reconocimiento semantico se hace despues con GetComponentInParent<IDamageable>()
+e GetComponentInParent<IGolpeableElemental>().
+
+
+1.3 ESQUEMA DE CONTROLES (contrato unico: PlayerInputReader)
+--------------------------------------------------------------------------------
+WASD            -> movimiento relativo a la camara (PlayerController)
+Raton X/Y       -> orbita de camara (CameraFollow, solo en LateUpdate)
+Q               -> ataque basico (PlayerCombat)
+Clic derecho    -> habilidad elemental / ataque especial (PlayerCombat)
+Clic izquierdo  -> SOLO interfaz + apuntado sostenido de Illya (reticula)
+Espacio         -> salto
+Shift izquierdo -> dash
+F               -> interactuar (todas las interacciones de entorno)
+Tab             -> relevo Tag-Team
+Escape          -> abrir Modal_Pausa
+R               -> reinicio de nivel (se lee SIEMPRE, incluso con entrada bloqueada)
+
+El cursor permanece SIEMPRE libre y visible (CursorLockMode.None): lo fuerza
+PlayerInputReader.AsegurarCursorLibre, HUDCursorDetector y CameraFollow.
+
+
+================================================================================
+2. SHADERS Y MATERIALES CUSTOM
+================================================================================
+
+2.1 SHADERS PROPIOS (Assets/Shaders)
+--------------------------------------------------------------------------------
+(1) Shader Graphs/Dissolve  — Assets/Shaders/Dissolve.shadergraph
+    Materiales que lo usan:
+      • Assets/Materials/Enemies/Scorpion/Scorpion Death.mat
+      • Assets/Materials/Enemies/Quimera/Quimera Death.mat
+      • Assets/Shaders/Dissolve.mat
+    Uso: material de MUERTE. DisolucionMuerte sustituye el material de los
+    renderers por este al morir el enemigo y anima la propiedad.
+    Propiedad animada por codigo: "_DissolveAmount" (0 → 1).
+
+(2) Custom/DissolveSurface — Assets/Shaders/DissolveSurface.shader (HLSL propio)
+    Propiedades declaradas (lineas 5-9):
+        _BaseColor      (Color)         color base del material
+        _DissolveAmount (Range 0..1)    cantidad de disolucion
+        _EdgeWidth      (Range 0..0.2)  grosor del borde incandescente
+        _HitFlash       (Range 0..1)    destello blanco de impacto
+    Materiales: M_Enemigo_Disolucion_Fauna.mat, M_Enemigo_Disolucion_Minijefe.mat
+    Uso doble:
+      • DamageFlash escribe "_HitFlash" a 1 durante 0.15 s (detecta la propiedad
+        con Material.HasProperty y solo entonces la escribe).
+      • DisolucionMuerte escribe "_DissolveAmount".
+
+(3) Custom/HaloGlowAdditive — Assets/Shaders/HaloGlowAdditive.shader
+    Propiedad: _Intensity (Float, por defecto 1.6).
+    Material: M_Halo_Runico_Glow.mat.
+    Uso: halos aditivos de bajo coste (glow runico sin bloom obligatorio).
+
+(4) Shader Graphs/HaloGlow — Assets/Shaders/HaloGlow.shadergraph
+    Materiales: HaloGlow.mat, PortalGlow.mat.
+    Uso: halo del cofre (CofreRecompensa escribe "_Intensity" 0→1→0 en forma de
+    seno durante el pulso de apertura), halos de totem y brillo de portal.
+    Propiedad animada: "_Intensity".
+
+(5) Shader Graphs/Fuego — Assets/Shaders/Fuego.shadergraph
+    Materiales: "Fuego  Azul".mat (fuego azul de los totems de lore),
+                Fuego.mat (fogatas y antorchas).
+    Propiedad animada: "_Intensity" (TotemLore la lleva de 0 a 1 al encender).
+
+(6) Shader Graphs/Enemigos — Assets/Shaders/Enemigos.shadergraph
+    Materiales: scorpion mana.mat, quimera mana.mat.
+    Uso: variante de enemigo "de mana" (tinte y emision propios).
+
+(7) Shader Graphs/Jefes_Nivel — Assets/Shaders/Jefes_Nivel.shadergraph
+    Materiales: scorpion boss.mat, quimera boss.mat.
+    Uso: variante de JEFE (mas saturada y con emision superior).
+
+(8) Shader Graphs/Niebla — Assets/Shaders/Niebla.shadergraph
+    Materiales: Niebla1.mat, Niebla2.mat. Planos de niebla volumétrica falsa.
+
+(9) Shader Graphs/WaterVenom — Assets/Shaders/WaterVenom.shadergraph
+    Material: WaterVenom.mat. Agua corrosiva del bosque.
+
+Materiales URP estandar (Universal Render Pipeline/Lit y /Unlit) cubren el resto:
+bloques de color del blockout (M_Blockout_*), entorno (Island, Rocks, Roots,
+Temple/*, Obelisk, altar, Altar_Encendido, Cofre, Jaula, Vines, Tocon), heroes
+(Caelen, Illya, Shield 1/2), VFX (M_VFX_*), y M_Reticula_Illya (URP/Unlit) para
+la reticula de apuntado. Proyectiles y particulas usan
+Universal Render Pipeline/Particles/Unlit y Particles/Standard Unlit.
+
+2.2 MATERIALES CLAVE Y DONDE SE APLICAN
+--------------------------------------------------------------------------------
+Material                    | Escena | Como se aplica
+----------------------------+--------+-------------------------------------------
+altar                       | N1     | Renderer del objeto `altar`, emision APAGADA.
+Altar_Encendido             | N1     | ActivadorPortal lo sustituye por sharedMaterials
+                            |        | al pulsar 'F' (unico con _EMISSION encendida).
+Fuego  Azul                 | N1     | TotemLore (x9 totems) via MaterialPropertyBlock
+                            |        | sobre _Intensity. Cada totem tiene su bloque.
+HaloGlow / PortalGlow       | N1/N2  | Halos runicos; M_Halo_Runico_Glow en escena.
+Cofre                       | N1/N2  | Prefab Cofre; su hijo Halo usa HaloGlow.
+Vines                       | N1     | Barrera_Raices_Puzle1/Vines (se hunde).
+M_Enemigo_Disolucion_*      | N1     | Enemigos del Nivel 1 (Custom/DissolveSurface).
+scorpion boss / mana        | N1     | Jefe_ScorpionDelAbismo y su version mana.
+quimera boss / mana         | N2     | Jefe_InquisidorAlado y Quimeras de arena.
+M_L2_VientoCorriente        | N2     | Puente fisico al Cofre (tramos A y B) y
+                            |        | conexiones de puente de viento.
+M_Reticula_Illya (Unlit)    | N2     | Objeto `Reticula_Illya` (raiz de escena).
+Obelisk                     | N2     | Los 3 obeliscos del puzzle secuencial.
+M_Blockout_MecanicaViento_  | N1/N2  | Aparicion / escudos de los 3 pilares.
+  CianTranslucido           |        |
+
+2.3 REGLA DE ORO DE LOS MATERIALES
+--------------------------------------------------------------------------------
+NINGUN script instancia materiales en runtime para feedback. Todo se escribe con
+MaterialPropertyBlock (PuzzleActivator, PuzzleRaicesCorruptas, TotemLore,
+PuzzleLoreTotems, DamageFlash, DisolucionMuerte). Consecuencias buscadas:
+  · se conserva el batching (no se rompe la SRP Batcher);
+  · el tinte de un totem no se filtra al resto de totems que comparten material;
+  · no se generan fugas de materiales por renderer.
+La UNICA sustitucion de material en runtime es la del altar (ActivadorPortal), y
+se hace sobre sharedMaterials (referencia, sin copia) y una sola vez.
+
+
+================================================================================
+3. VFX Y PARTICLE SYSTEMS
+================================================================================
+
+3.1 PARTICLE SYSTEMS PRESENTES EN ESCENA
+--------------------------------------------------------------------------------
+NIVEL 1 (Maqueta Nivel 1)
+  Player/VFX_Relevo_Caelen              emis=On rate=10 dur=4 loop — aura de relevo
+  Player/VFX_Relevo_Caelen/Trails       emis=On rate=30 dur=4 loop — estela
+  Player/VFX_Relevo_Illya               emis=On rate=10 dur=4 loop — aura de relevo
+  Player/VFX_Relevo_Illya/Trails        emis=On rate=30 dur=4 loop — estela
+
+NIVEL 2 (Maqueta Nivel 2)
+  Player/VFX_Relevo_Caelen (+Trails)    idem N1
+  Player/VFX_Relevo_Illya  (+Trails)    idem N1
+  01_Isla_Spawn/Pilar_Resonancia/Aparicion                rate=0  dur=4 loop
+  01_Isla_Spawn/Pilar_Resonancia/Aparicion/DarkSparks     rate=30 dur=4 loop
+  01_Isla_Spawn/Pilar_Resonancia/Aparicion/Sparks         rate=30 dur=2 loop
+  01_Isla_Spawn/Pilar_Resonancia/Aparicion/Sides          rate=2  dur=2 loop
+  02_Isla_ArenaA/Pilar_Resonancia/Aparicion               (mismo juego, 4 PS)
+  04_Isla_Templo_Central_Puzzle/Pilar_Resonancia/Aparicion (mismo juego, 4 PS)
+
+Los tres bloques `Aparicion` son el ESCUDO de cada pilar: un sistema emisor
+principal (rate 0 = solo emite por bursts) mas tres hijos que aportan chispas
+oscuras, chispas claras y planos laterales. LogicaPilar los enciende/apaga con
+SetActive sobre el GameObject padre `Aparicion`.
+
+3.2 VISUAL EFFECT GRAPH (Assets/Shaders/*.vfx)
+--------------------------------------------------------------------------------
+Asset                  | Instancias en escena
+-----------------------+--------------------------------------------------------
+Raices 1               | N1 · 05_Puzzle_Raices_Corruptas/Barrera_Raices_Puzle1/
+                       |      Desaparecer_Raices
+Activar Portal          | N1 · 08_Altar.../Totem_Final_N1/Activar_Portal
+Jaula 1                 | N1 · 08_Altar.../Desaparecer_Jaula
+Boss_DarkMiasma         | N1 · _Enemigos/Jefe_ScorpionDelAbismo/Scorpion_Boss/
+                       |      Boss_DarkMiasma
+                       | N2 · _Enemigos/Jefe_InquisidorAlado/Quimera_Boss_Modelo/
+                       |      Boss_DarkMiasma
+Flor_Desaparecer        | N2 · 01_Isla_Spawn/Flores_Puzzle/Flor 1..3/Flor_Desaparecer
+
+3.3 PREFABS DE VFX (Assets/Prefabs/VFX y Assets/Resources/VFX)
+--------------------------------------------------------------------------------
+VFX_Hero_SkillQ.prefab          · Q de Caelen (melee). Se instancia en el punto de
+                                  ataque y se autodestruye a los 2 s.
+VFX_AtaqueBasico_Illya.prefab   · proyectil de la Q de Illya. Particle System
+                                  puro: viaja por Start Speed en Z local y explota
+                                  por Sub-Emitter 'Death'. Scaled por
+                                  startSpeed*startLifetime para calcular su alcance.
+Green hit.prefab                · impacto verde de madera, instanciado en vuelo.
+Vfx_Swap_Caelen / Vfx_Swap_Illya· prefabs de relevo (la escena usa los Particle
+                                  Systems hijos del Player, no estos).
+Prefab_Vfx_Raices_AoE           · Raices Voraces (especial de Illya).
+Prefab_Muro_Basalto / Resources/VFX/Muro_Basalto_Habilidad
+                                · Muro de Basalto (especial de Caelen).
+Prefab_Vfx_Impacto_Piedra/Madera· impactos elementales de reserva.
+VFX_Dash_Estela (Resources)     · estela del dash.
+Prefab_Plataforma_Liana_Temporal· plataforma temporal (utilidad de traversal).
+AtaqueSpecial Caelen/Illya      · wrappers de los especiales que asigna PlayerCombat.
+
+3.4 CICLO DE VIDA DE UN VFX (patron de reciclaje unico del proyecto)
+--------------------------------------------------------------------------------
+Existen dos patrones, y solo dos:
+
+(A) OBJETO PERSISTENTE QUE SE CONMUTA  (cero instanciacion)
+    Escudo `Aparicion`, `Activar_Portal`, `Desaparecer_Jaula`, `Desaparecer_Raices`,
+    `Flor_Desaparecer`, `Boss_DarkMiasma`, auras de relevo.
+      1. SetActive(true)
+      2. GetComponent<VisualEffect>()?.Play()   (si es VFX Graph)
+         y/o ParticleSystem.Play() en todos los hijos
+      3. espera N segundos (o WaitForSeconds real)
+      4. Stop / SetActive(false)
+    El objeto NUNCA se destruye: vive en la escena y se reutiliza.
+    Ejemplos exactos:
+      · ActivadorPortal.Activar -> vfxActivarPortal.SetActive(true) + Play()
+      · CeldaDeRescate.SecuenciaRescate -> LanzarVfxJaula() ... segundosVfx=3 ... apagar
+      · PuzzleRaicesCorruptas.LanzarVfxRaices -> StartCoroutine(ApagarVfxTras(3))
+      · TagTeamManager.RutinaVfxRelevo -> Play, espera duracionVfxRelevo, Stop+SetActive(false)
+      · MinijuegoFlores.ReproducirDesaparicion -> DESPARENTA el VFX de la flor
+        (vfx.SetParent(null,true)) para que sobreviva al SetActive(false) de la
+        flor, lo reproduce y hace Destroy(vfx, vidaVfx).
+
+(B) INSTANCIA AUTODESTRUIBLE
+    Proyectiles, impactos y especiales invocados por PlayerCombat.
+      · InstanciarImpacto  -> Instantiate + Destroy(instancia, 2f)
+      · AtaqueBasicoIllya  -> Instantiate + Destroy(instancia, startLifetime + margen)
+      · InstanciarEspecial -> Instantiate + Destroy(instancia, vidaInstanciaEspecial)
+
+
+================================================================================
+4. PREFABS CLAVE
+================================================================================
+Ruta                                          | Rol
+----------------------------------------------+--------------------------------
+Assets/Prefabs/Heroes/Player.prefab           | HEROE COMPLETO. Raiz con
+   CharacterController + PlayerInputReader + TagTeamManager + PlayerController +
+   PlayerCombat + HealthComponent. Hijos: Visual_Model/Player_Caelen y
+   Player_Illya (enchufes con el FBX y HeroVisualAnimator), VFX_Relevo_*,
+   puntos de ataque (puntoAtaqueNormalCaelen/Illya, puntoEspecialCaelen/Illya).
+   Los 4 modelos estan a escala (1,1,1) con ~5 m de alto y su collider ajustado.
+Assets/Prefabs/Heroes/Caelen.prefab           | Enchufe/modelo de Caelen (FBX +
+   Animator AC_Heroe_Caelen + materiales Caelen/Shield 1-2).
+Assets/Prefabs/Heroes/Illya.prefab            | Enchufe/modelo de Illya (FBX +
+   Animator AC_Heroe_Illya + baston magic_staff).
+Assets/Prefabs/Enemies/Scorpion_Boss.prefab   | JEFE del Nivel 1
+   (Jefe_ScorpionDelAbismo). NavMeshAgent + Rigidbody + EnemyAI + HealthComponent
+   + HitoMuerte + DisolucionMuerte + EnemyAnimatorDriver + Boss_DarkMiasma.
+Assets/Prefabs/Enemies/ScorpionMana.prefab    | Fauna corrupta del N1 (raiz con
+   compensacion de rotacion +90 y Factice001 Rx180 para corregir los clips).
+Assets/Prefabs/Enemies/Quimera_Boss.prefab    | JEFE del Nivel 2
+   (Jefe_InquisidorAlado) con HitoMuerte y Boss_DarkMiasma.
+Assets/Prefabs/Enemies/QuimeraEolica.prefab   | Quimera de arena del N2 (par
+   del combate 1 de Isla_ArenaA).
+Assets/Prefabs/UI/Canvas_HUD.prefab           | HUD COMPARTIDO por ambas escenas
+   (Modal_Pausa, Modal_Ayuda, Modal_Configuracion, Modal_Resonancia,
+   Modal_Recursos, Modal_Derrota, Modal_Victoria, Modal_Lore, Modal_Pistas,
+   Banner_Instrucciones, Pentagrama, Barra_Progreso, radiales de cooldown).
+   Recibe el Slider_Volumen + Txt_VolumenPct por Apply All desde el N2.
+   OJO: existe tambien Assets/Prefabs/HUD/Canvas_HUD.prefab (ruta historica).
+   La instancia viva de ambas escenas apunta a Assets/Prefabs/UI/Canvas_HUD.prefab.
+Assets/Prefabs/Environment/Pilar_Resonancia.prefab | PILAR DE RESONANCIA. Raiz
+   con LogicaPilar (BoxCollider Trigger), hijos `Aparicion` (escudo, 4 PS),
+   `Orbe` y el GameObject de conexion al puente.
+Assets/Prefabs/Environment/Pista_Monolito.prefab   | Monolito de pista
+   (MonolitoPista, trigger, abre Modal_Pistas).
+Assets/Prefabs/Environment/Cofre.prefab            | Cofre de recompensa
+   (Animation legacy + hijo Halo con HaloGlow + CofreRecompensa en la instancia).
+Assets/Prefabs/Environment/Cage.prefab             | Jaula de Illya (Animation
+   legacy con el clip CofreAbrir/apertura + CeldaDeRescate en la instancia).
+Assets/Prefabs/Environment/Totems/Totem Final.prefab  | Totem del umbral (N1)
+   que aloja ActivadorPortal.
+Assets/Prefabs/Environment/Totems/Prefab_Totem_Interactivo.prefab | Totem de
+   lore (TotemLore + EmisorLore).
+Assets/Prefabs/Environment/Raices.prefab / Vines.prefab | Barrera del puzzle de
+   raices (HundimientoRaices sobre Vines).
+Assets/Prefabs/Environment/Flor 1.prefab           | Flor_Puzzle del N2 (hijo
+   Flor_Desaparecer con VFX Graph + collider capa Puzzle).
+Assets/Prefabs/Environment/island.prefab / Risco / GiantRock / Columna2 / pared
+   / Arco_Portal / Antorcha / Fogata / Arbusto / Tocon / Arbol*  | Kit de entorno.
+Assets/Prefabs/Combat/*, Assets/Prefabs/VFX/*       | Ver seccion 3.3.
+
+
+================================================================================
+5. ARQUITECTURA CORE — SCRIPT POR SCRIPT
+================================================================================
+Todos los scripts viven en el ensamblado por defecto (Assembly-CSharp), sin
+namespaces, en la raiz del namespace global. Convenciones transversales:
+
+  · SINGLETON OBSERVABLE: `public static X Instance { get; private set; }` en
+    TagTeamManager, PlayerInputReader, CameraFollow, HitstopManager,
+    GameProgressManager. Los demas sistemas NO buscan por nombre en runtime:
+    todo llega por [SerializeField] del Inspector.
+  · PATRON OBSERVADOR: nada hace polling de vida. HealthComponent publica
+    OnHealthChanged / OnDamaged / OnDied y cada consumidor se suscribe.
+  · EVENTOS DE INSPECTOR: los efectos de diseno (abrir un modal, disparar un
+    puente) se cablean como UnityEvent persistentes, nunca por codigo.
+  · IDEMPOTENCIA: casi todas las acciones publicas empiezan con `if (yaHecho) return;`.
+  · PAUSA: UIModalWindow es la UNICA autoridad de Time.timeScale en la interfaz.
+
+
+--------------------------------------------------------------------------------
+5.1 NUCLEO, PROGRESO Y AUDIO
+--------------------------------------------------------------------------------
+
+### GameProgressManager.cs  (MonoBehaviour, DontDestroyOnLoad)
+AUTORIDAD del progreso de partida. Singleton que sobrevive a las escenas.
+ESTADO (flags booleanos): illyaDesbloqueada, zephyrLiberada, illyaActivaEnNivel2,
+enemigoNivel1Derrotado, puzzleRaicesNivel1Resuelto, bossNivel1Derrotado,
+atajoSpawnNivel1Abierto, enemigoNivel2Derrotado, puzzleTemploNivel2Resuelto,
+bossNivel2Derrotado, toberaEolicaActivada, monolitoNivel2Sincronizado,
+altarPurificadoNivel2.
+Mas dos HashSet<string>: objetosRecogidos y fragmentosLeidos.
+LOGICA:
+  · Awake: si ya hay Instance destruye el GameObject duplicado; si no, se marca
+    Instance, DontDestroyOnLoad y recupera el desbloqueo de Illya desde
+    GameSaveState (PlayerPrefs).
+  · RegistrarCofreOItem / EstaRecogido: memoria + disco.
+  · RegistrarFragmento / EstaFragmentoLeido / FragmentosLeidos: idem para lore.
+  · DesbloquearIllya(bool): flag + GameSaveState.IllyaDesbloqueada.
+  · MarcarIllyaAlFrenteEnNivel2(): illyaActivaEnNivel2 = true y desbloquea.
+  · MarcarHito(HitoJuego): switch que traduce a los flags de nivel.
+  · ProgresoPorcentaje (get): NO es una suma acumulada sino un MAXIMO escalonado
+      N1: 10 enemigo · 20 raices · 30 (FragmentosLeidos >= 3) · 40 jefe · 50 Illya
+      N2: 60 primer enemigo · 70 tobera · 80 monolito · 90 Guardian · 100 altar
+    Regla: un hito nunca baja el porcentaje.
+  · ResetearProgreso(): pone todo a false, vacia sets y GameSaveState.BorrarTodo().
+RELACIONES: lo consultan TagTeamManager (relevo inicial), CeldaDeRescate
+(requisito de jefe), TransicionAltarNivel1 (relevo de escena), GestorOleada y
+HitoMuerte (escriben). Se CONSERVA por decision de diseno: no se elimina.
+
+### GameSaveState.cs  (static)
+Persistencia local sobre PlayerPrefs con prefijo "EcosEraOlvidada.".
+CLAVES: Recurso.CristalesVoto, Recurso.OroPuro, Recurso.Esencias, Objetos,
+Lore.Fragmentos, Progreso.IllyaDesbloqueada.
+Carga perezosa (AsegurarCarga) de los dos HashSet serializados con separador '|'.
+Expone OnCambio (event Action) que se dispara en cada escritura.
+BorrarTodo() elimina todas las claves y vacia los sets.
+Usado por GameProgressManager (objetos, fragmentos, Illya) y TagTeamManager
+(DesbloquearIllya y Reaparecer -> BorrarTodo).
+
+### GestorAudioGlobal.cs  (MonoBehaviour, DontDestroyOnLoad)
+AUTORIDAD UNICA del volumen del juego.
+CONSTANTES: ClaveVolumen = "VFX_VolumenGlobal"; VolumenPorDefecto = 0.8f.
+ESTADO: volumenGlobal (0..1, [SerializeField, Range]) + aplicarAlAudioListener.
+LOGICA:
+  · Instancia (static) y Obtener(): si no hay instancia, la busca (incluidos
+    inactivos con FindObjectsInactive.Include) y, si no existe, crea el
+    GameObject "GestorAudioGlobal" y lo auto-registra. Asi cualquier escena usa
+    el volumen aunque no tenga el componente.
+  · Awake: si ya hay una instancia distinta, Destroy(this) (el superviviente es
+    el del Nivel 1). Si no: SetParent(null) para poder ser DontDestroyOnLoad,
+    lee PlayerPrefs, Aplicar() y se suscribe a SceneManager.sceneLoaded.
+  · HOST: el componente vive en un GameObject dedicado '_Managers/GestorAudioGlobal'
+    (NO en '_Managers'). Es imprescindible: GameProgressManager hace
+    DontDestroyOnLoad sobre su propio GameObject, que es '_Managers', de modo que
+    un gestor colgado de '_Managers' arrastraba al Nivel 2 el AudioSource
+    ambiental del Nivel 1 (dos pistas sonando a la vez) y duplicaba
+    HitstopManager. Con host dedicado solo persiste el objeto del gestor.
+  · EstablecerVolumen(float): Clamp01 + PlayerPrefs.SetFloat + Save + Aplicar.
+  · RecargarDesdeDisco(), RestablecerVolumen().
+  · Aplicar(): AudioListener.volume = volumenGlobal (los AudioSource quedan a 1).
+  · AlCargarEscena: reaplica el volumen tras cada carga (herencia N1 -> N2).
+CONSUMIDOR: Gestor_ModalConfiguracion (Slider_Volumen -> EstablecerVolumen).
+
+### HitoMuerte.cs
+Enum HitoJuego { Ninguno, EnemigoNivel1, JefeNivel1, EnemigoNivel2,
+GuardianNivel2, AltarNivel2 } + componente que marca un hito cuando el
+HealthComponent del MISMO GameObject muere.
+Se suscribe a salud.OnDied en OnEnable y se da de baja en OnDisable.
+Cumplir(): idempotente; GameProgressManager.MarcarHito(hito),
+canvasHUD.SumarProgreso(progresoAlCumplirse) y UnityEvent alCumplirse (aqui se
+cablea, en el N2, la activacion del trigger del altar final y el banner
+"Ofrecer Astros de Viento [F]").
+
+### CameraFollow.cs  (LateUpdate)
+Camara orbital en tercera persona. UNICO punto de calculo y en LateUpdate
+(elimina el jitter frente a mover el heroe en Update).
+PIPELINE por frame:
+  1. Rotacion orbital desde PlayerInputReader.DeltaRaton (yaw/pitch con clamp
+     minVerticalAngle..maxVerticalAngle) salvo RotacionPausada o puntero sobre UI.
+  2. Suavizado angular con SmoothDampAngle sobre un unico reloj (dt escalado o
+     unscaled si timeScale==0).
+  3. Seguimiento del pivote (target.position + targetOffset, SmoothDamp).
+  4. Brazo orbital de defaultDistance con SphereCast anti-oclusion; la distancia
+     se recorta a hit.distance - 0.15 y se interpola con distanceSmoothSpeed.
+  5. Posicion final + screen shake + LookAt(target + pivoteMirada).
+API PUBLICA: TriggerScreenShake(duracion, magnitud), DerrotaCongelada().
+Comprueba la UI con HUDCursorDetector.PunteroSobreUI, UIModalWindow.HayModalAbierto,
+EventSystem.IsPointerOverGameObject y las zonas HUD ampliadas margenUI px.
+
+### ZonaDeAbismo.cs
+Red de seguridad del volumen de muerte (00_KillZone_Abismo, Y=-12).
+Muestrea cada intervaloMuestreo la ultima posicion con suelo firme y devuelve al
+heroe ahi al cruzar el trigger.
+EsPuntoFirme() lanza 5 raycasts (centro + 4 cardinales a radioSeguro): asi no
+guarda el filo de una isla y no encadena dos rescates por caida.
+Reposicionar(): aplica opcionalmente dano de caida (porcentajeDano, 25 % del GDD)
+ANTES de mover, y delega en PlayerController.Reubicar (que anula la velocidad
+acumulada). Enfriamiento entre rescates. Expone Reapariciones.
+
+### TransicionAltarNivel1.cs
+Trigger del objeto `altar` del Nivel 1. Su collider arranca DESACTIVADO y solo lo
+habilita ActivadorPortal.
+OnTriggerEnter -> CargarNivel2():
+  · GameProgressManager.DesbloquearIllya(true) + MarcarIllyaAlFrenteEnNivel2()
+  · valida que indiceEscenaDestino (1) exista en Build Settings
+  · UIModalWindow.ReiniciarPausa() (por si habia un modal abierto)
+  · SceneManager.LoadScene(1)
+No lanza modales ni pistas ni crea objetos.
+
+
+--------------------------------------------------------------------------------
+5.2 ENTRADA Y LOCOMOCION
+--------------------------------------------------------------------------------
+
+### PlayerInputReader.cs  ([DefaultExecutionOrder(-100)])
+PUNTO UNICO de lectura del New Input System. Ningun otro script toca
+Keyboard.current / Mouse.current para gameplay (CameraFollow y HUDCursorDetector
+solo leen Mouse.current.position para UI).
+Ciclo: Update -> ReiniciarPulsaciones() (todo a false) -> lee el frame.
+PROPIEDADES PUBLICAS: Movimiento, DeltaRaton, PosicionRaton, SaltoPulsado,
+DashPulsado, AtaquePulsado, HabilidadPulsada, InteraccionPulsada,
+ApuntadoMantenido (clic izquierdo SOSTENIDO), PausaPulsada, ReinicioPulsado,
+RelevoPulsado; y el setter EntradaBloqueada.
+DETALLES CRITICOS:
+  · ReinicioPulsado se lee SIEMPRE, incluso con EntradaBloqueada (permite
+    reiniciar tras la derrota).
+  · `sobreUI = PunteroSobreUI || UIModalWindow.HayModalAbierto` desactiva
+    movimiento, salto, dash, ataque, habilidad, apuntado e interaccion.
+  · PausaPulsada (Escape) llama directamente a canvasHUD.AbrirModalPausa().
+  · PunteroSobreUI (static) = EventSystem.current.IsPointerOverGameObject().
+  · AsegurarCursorLibre() cada frame.
+
+### PlayerController.cs  ([RequireComponent(CharacterController)])
+Locomocion del heroe ACTIVO sobre CharacterController. La velocidad base y la
+del dash salen de tagTeam.ActiveHero (moveSpeed / dashSpeed).
+Orden de Update:
+  1. isGrounded -> coyoteCounter; si esta en suelo fija verticalVelocityY=-2.
+  2. Buffer de salto (jumpBufferTime).
+  3. Salto si buffer>0 y coyote>0 y no esta en dash (v = sqrt(h * -2 * g)).
+  4. Enfriamiento del dash (dashCooldown) y arranque con IniciarDash.
+  5. Movimiento: dash (direccion * dashSpeed) o ProcesarMovimiento.
+  6. Gravedad con fallMultiplier cuando cae.
+  7. velocidadHorizontalActual, expuesta para la animacion.
+ProcesarMovimiento: normaliza el input, lo rota por camTransform.eulerAngles.y,
+gira el transform con SmoothDampAngle(rotationSmoothTime) y acelera/frena con
+MoveTowards (acceleration/deceleration).
+API: DashCooldownTotal, DashCooldownRestante, EstaHaciendoDash, VelocidadHorizontal,
+EnSuelo, VelocidadVertical, AplicarEmpujeExterno(Vector3), Reubicar(Vector3).
+CLAVE: VelocidadHorizontal existe porque CharacterController.velocity solo
+refleja el ultimo Move() del frame (aqui el de gravedad) y devolveria 0 en XZ.
+Reubicar desactiva el controller, mueve, resetea velocidades y reactiva: solo asi
+el heroe no reaparece conservando la caida (~25 m/s).
+
+### PlayerCombat.cs
+MODULO UNICO de combate. Se decide todo por tagTeam.ActiveHeroIndex (0 Caelen,
+1 Illya). No toca el Animator: publica OnAtaqueBasico y OnHabilidad, que consume
+HeroVisualAnimator.
+Q — Caelen (AtaqueBasicoCaelen): temporizador = attackCooldown, OnAtaqueBasico,
+ImpulsarHaciaAdelante(attackImpulse) por CharacterController.Move, instancia
+prefabQCaelen en puntoAtaqueNormalCaelen orientado a forward, y
+Physics.OverlapSphere(centro, attackRange, capasAfectadas) aplicando
+IDamageable.TakeDamage y IGolpeableElemental.RecibirGolpeElemental a cada raiz
+unica (raicesProcesadas evita dobles golpes a un mismo enemigo multiparte).
+Si golpeo algo: HitstopManager.TriggerHitstop(0.04) + shake + log.
+Q — Illya (AtaqueBasicoIllya): instancia prefabQIllya en puntoAtaqueNormalIllya,
+orientado a DireccionDisparo(); LEE del Particle System main.startDelay,
+startLifetime y startSpeed para deducir espera y distancia (NO mueve nada: el
+viaje es del propio PS). Destruye la instancia pasada startLifetime+margen y
+lanza la corrutina VueloProyectil.
+VueloProyectil: avanza virtualmente el proyectil frame a frame y llama a
+BuscarImpactoProyectil, que muestrea el tramo con Physics.OverlapSphere
+(subpasos de radio radioImpactoProyectil) y solo acepta colliders con
+IDamageable o IGolpeableElemental (el terreno no detiene el disparo). Si impacta:
+ResolverImpactoProyectil (dano + interaccion + instancia prefabImpactoVerde
+"Green hit" + hitstop + shake) y Destroy(instancia) ANTES de tiempo. Si no
+impacta, aplica el dano ciego original en AplicarDanoArea(fin, radioExplosion).
+APUNTADO DIRECCIONAL (solo Illya): mientras ApuntadoMantenido, PuntoBajoRaton()
+proyecta ScreenPointToRay y coloca `reticula` en el impacto o en
+rayo.origin + rayo.direction * alcanceApuntado si el rayo NO toca nada (permite
+apuntar al aire). La reticula se orienta como la camara y se apaga al soltar.
+Clic derecho (EjecutarHabilidadElemental): guarda skillCooldownTimer, publica
+OnHabilidad y ejecuta InvocarMuroBasalto (instancia AtaqueEspecial_Caelen en
+puntoEspecialCaelen + AplicarDanoArea radioGolpeMuro con 1.5x dano) o
+InvocarRaicesVoraces (instancia AtaqueEspecial_Illya en puntoEspecialIllya +
+AplicarDanoArea radioRaices con anclaje EnemyAI.AplicarInmovilizacion(duracionZarzas)).
+AplicarDanoArea es el embudo comun (especiales + explosion del proyectil): daña
+entidades, notifica golpeables e inmoviliza si procede.
+EnviarCooldownsAlHUD() cada frame: dash (PlayerController), Q y especial, como
+progreso 0..1 (1 = listo) -> Canvas_HUD.ActualizarCooldowns.
+PunteroSobreUI() bloquea toda accion de combate con el puntero sobre la interfaz.
+Gizmos: dibuja el radio melee de Caelen o la linea+radio del proyectil de Illya.
+
+### HeroVisualAnimator.cs
+Vive en cada ENCHUFE visual (Player_Caelen / Player_Illya), no en la raiz.
+OnEnable -> Resolver + Suscribir + ReiniciarAnimador (Rebind + parametros
+limpios): un heroe que habia muerto vuelve a Idle al reaparecer.
+Update escribe Speed (normalizada por velocidadMaxima), IsGrounded, IsFalling y
+dispara Jump en el flanco suelo->aire ascendente. Se suscribe a
+PlayerCombat.OnAtaqueBasico (AttackNormal), OnHabilidad (AttackSpecial) y
+salud.OnDied (Die). applyRootMotion = false siempre: el desplazamiento lo arbitra
+PlayerController.
+Referencias: se resuelven por GetComponentInParent (locomocion, combate, salud)
+o se asignan por Inspector.
+
+### TagTeamManager.cs
+Gestor del Tag-Team. NO contiene combate.
+PERFILES: `caelen` e `illya` como HeroCombatData serializados con los valores del
+GDD (Caelen: Piedra, 130 HP, 6.5 m/s, 30 dano, 2.2 rango, 0.55 cd, knockback 9,
+impulse 0.40 · Illya: Madera, 95 HP, 7.6 m/s, 18 dano, 3.5 rango, 0.30 cd,
+knockback 5.5, impulse 0.55).
+ESTADO: activeHeroIndex (0/1), illyaDesbloqueada, iniciarConIllya, caido[2],
+derrotaActiva, rutinaDerrotaEnCurso.
+Awake: Instance, resuelve entrada y canvasHUD, cachea el HealthComponent (lo crea
+si falta) y se suscribe a OnHealthChanged/OnDied; prepara los VFX de relevo
+(cachea sus ParticleSystem y los apaga).
+Start: decide el heroe inicial (iniciarConIllya o GameProgressManager.
+illyaActivaEnNivel2, pero siempre condicionado a illyaDesbloqueada),
+RestablecerEstadoHeroes (vida al maximo y sin marcas de caido), Initialize del
+HealthComponent con el perfil activo, ActualizarVisualProxy (conmuta los
+enchufes), RestablecerAnimadores (Play del idle real Caelen_Idle / Illya_Idle) y
+sincroniza GameProgressManager.illyaDesbloqueada con la maqueta.
+Update: RelevoPulsado -> IntentarRelevo(1 - activeHeroIndex); ReinicioPulsado
+mientras derrotaActiva -> Reaparecer().
+INTENTARRELEVO: bloquea el relevo a Illya si sigue sellada.
+CAMBIARHEROE: guarda el indice, re-inicializa el HealthComponent con la vida del
+nuevo perfil (VIDAS INDEPENDIENTES), conmuta modelos, shake, VFX de relevo del
+heroe que entra y publica OnHeroeCambiado(heroe).
+VIDA: AlCambiarVidaHeroe escribe currentHealth/maxHealth en el perfil activo y
+publica OnVidaHeroeCambiada para el HUD.
+DERROTA: AlMorirHeroeActivo marca caido[indice]; si el otro esta en pie y
+habilitado hace relevo automatico; si cae Caelen con Illya sellada publica
+OnDerrotaSinIllya; si caen los dos publica OnAmbosCaidos. En ambos casos
+RutinaDerrota: bloquea entrada, dispara el trigger "Muerte" del Animator del
+heroe caido (limpia antes "Die" para que la muerte entre por un unico camino),
+espera pausaAntesDelModal con el juego AUN EN MARCHA (para que la animacion
+corra) y luego canvasHUD.MostrarModalDerrota(mensaje) (que congela el tiempo via
+UIModalWindow).
+REAPARECER: UIModalWindow.ReiniciarPausa, timeScale=1, desbloquea entrada,
+GameSaveState.BorrarTodo, GameProgressManager.ResetearProgreso y recarga la
+escena activa (hard reset).
+DESBLOQUEARILLYA: flag + GameSaveState + GameProgressManager + republica
+OnHeroeCambiado para que el pentagrama se ilumine en el mismo frame.
+VFX DE RELEVO: ReproducirVfxRelevo -> corrutina que hace SetActive(true), Clear +
+Play de cada ParticleSystem, espera duracionVfxRelevo, Stop(StopEmittingAndClear)
+y SetActive(false). Nunca instancia nada.
+
+### HeroCombatData.cs  (clase serializable, NO MonoBehaviour)
+Modelo de datos de un heroe: heroName, element (Piedra/Madera), maxHealth,
+currentHealth, moveSpeed, dashSpeed, attackDamage, attackRange, attackCooldown,
+knockbackStrength, attackImpulse, skillCooldown y skillCooldownTimer
+([NonSerialized], gestionado por PlayerCombat).
+
+
+--------------------------------------------------------------------------------
+5.3 SALUD, COMBATE Y FEEDBACK
+--------------------------------------------------------------------------------
+
+### IDamageable.cs  (interface)
+`void TakeDamage(float amount, Vector3 hitPoint, Vector3 knockbackForce);`
+Contrato que desacopla el combate del tipo de entidad. Lo implementa
+HealthComponent.
+
+### HealthComponent.cs  (IDamageable)
+Sistema de vida unico para heroes, enemigos y jefes.
+EVENTOS: OnHealthChanged(actual,max), OnDamaged(cantidad,punto), OnDied.
+Ademas UnityEvent alRecibirDano / alMorir para cableado de Inspector.
+API: MaxHealth, CurrentHealth, Normalizada, EstaMuerto, Initialize(max,actual),
+SetHealth, Heal, ApplyDamage(cantidad, retroceso, punto), TakeDamage(3 args),
+TakeDamage(1 arg) (sin retroceso, la usan los enemigos contra el heroe),
+RestaurarVidaCompleta, ConfigurarDesactivacionAlMorir(bool,retardo),
+HaRecibidoDano.
+ApplyDamage: clamp a 0, NotificarCambio, DamageFlash.Destellar,
+retroceso delegado en EnemyAI.AplicarRetroceso si existe (la IA arbitra el
+conflicto PhysX/NavMesh) o AddForce si hay Rigidbody no cinematico, publica
+OnDamaged y alRecibirDano, y llama a Morir si llega a 0.
+Morir: OnDied + alMorir + enemyAI.NotificarMuerte + RutinaDesactivar
+(espera retardoDesactivacion y SetActive(false)).
+EXCEPCION IMPORTANTE: si el GameObject tiene TagTeamManager, desactivarAlMorir se
+fuerza a false — el heroe NUNCA se desactiva al caer; la derrota la arbitra el
+Tag-Team.
+
+### DamageFlash.cs
+Destello blanco de impacto SIN instanciar materiales (MaterialPropertyBlock).
+Escribe _BaseColor y _EmissionColor a blanco durante duracionDestello (0.18 s) y,
+si el material declara _HitFlash, lo sube a 1 durante duracionHitFlash (0.15 s).
+DetectarHitFlash() comprueba HasProperty en el sharedMaterial: asi el componente
+es valido tambien sobre URP/Lit. Limpiar() hace SetPropertyBlock(null) para no
+dejar al enemigo "en blanco" si lo desactivan a mitad del destello.
+
+### DisolucionMuerte.cs
+Muerte en dos tiempos para enemigos del Nivel 1.
+OnEnable se suscribe a salud.OnDied -> Iniciar (idempotente).
+Rutina: SustituirMaterial (solo MeshRenderer/SkinnedMeshRenderer, nunca VFX),
+interpola _DissolveAmount de 0 a valorFinal en `duracion` y, si
+destruirAlTerminar, Destroy(gameObject).
+Si destruirAlTerminar, en Awake llama a salud.ConfigurarDesactivacionAlMorir(false)
+para que la rutina de desactivacion del HealthComponent no corte la disolucion.
+Los jefes que deben seguir existiendo usan destruirAlTerminar = false (no se les
+sustituye el material; el HealthComponent los desactiva como siempre).
+
+### HitstopManager.cs  (singleton)
+Micro-congelacion del tiempo en los impactos. TriggerHitstop(duracion) lanza una
+corrutina: Time.timeScale = 0, WaitForSecondsRealtime(duracion) y
+timeScale = (UIModalWindow.HayModalAbierto ? 0 : 1). Es el UNICO consumidor de
+timeScale fuera de la UI y siempre respeta la pausa modal.
+
+### IGolpeableElemental.cs  (interface)
+`void RecibirGolpeElemental(HeroCombatData.ElementType elemento, Vector3 punto);`
+Contrato que permite al combate notificar al sistema de puzzles sin acoplarse.
+Implementan: PuzzleActivator, MinijuegoFlores.
+
+
+--------------------------------------------------------------------------------
+5.4 IA
+--------------------------------------------------------------------------------
+
+### EnemyAI.cs  ([RequireComponent(NavMeshAgent, HealthComponent)])
+Maquina de estados finita: Inactivo -> Patrulla -> Persecucion -> Ataque, mas
+Aturdido (retroceso), Regreso (leash) y Muerto.
+Start: ResolverObjetivo (tagTeam.transform.root o tag Player), AplicarLimitesPor
+Arquetipo, Rigidbody a isKinematic (el NavMesh conduce la posicion) y arranca en
+Patrulla.
+Update: corta si Muerto/Inactivo; en Aturdido solo descuenta el temporizador y
+ReanudarNavegacion; descuenta cooldown de ataque; ActualizarInmovilizacion; en
+Regreso solo procesa el retorno; calcula distancia, LEASH (distanciaOrigen >
+radioPersecucionMaximo, o el jugador fuera de centroGuardia) -> IniciarRegreso; y
+despacha al estado.
+PATRULLA: si el jugador entra en rangoDeteccion -> Persecucion; si no, elige un
+punto aleatorio en radioPatrulla validado con NavMesh.SamplePosition.
+PERSECUCION: si Inmovilizado, agente.isStopped; rompe el agro si la distancia
+supera rangoDeteccion*1.35; pasa a Ataque dentro de rangoAtaque; si no,
+SetDestination(objetivo).
+ATAQUE: detiene el agente, EncararObjetivo (Slerp), vuelve a Persecucion si el
+jugador se aleja (rangoAtaque*1.25) y lanza RutinaAtaqueTelegrafiado.
+RutinaAtaqueTelegrafiado: escala el enemigo con PingPong hasta 1.08 durante
+tiempoTelegrafiado (telegraph legible), luego EjecutarGolpe si sigue en rango.
+EjecutarGolpe: Physics.OverlapSphere(centro+alturaHitbox, radioHitbox, capasGolpe,
+Ignore); solo daña colliders cuyo padre tenga HealthComponent y sea heroe
+(CharacterController o capa Player); respaldo: si la esfera no alcanzo nada usa
+tagTeam.SaludHeroe cuando el jugador sigue en rango. Llama a
+HealthComponent.TakeDamage(danoAtaque) y sacude la camara.
+RETROCESO: AplicarRetroceso(fuerza) pone estado=Aturdido, pausa el agente
+(updatePosition/updateRotation false), pasa el Rigidbody a no cinematico y aplica
+AddForce(Impulse). ReanudarNavegacion devuelve el control al agente con
+NavMesh.SamplePosition + Warp (evita la desincronizacion PhysX/NavMesh) y vuelve
+a Persecucion.
+AplicarLimitesPorArquetipo: FaunaCorrupta (leash 12 m; con centroGuardia respeta
+la escena), HuesteCelestial (10 m), BestiaPiedraVoraz (confinado a radioArena),
+GuardianCeleste (confinado, sin leash y SIN regeneracion al volver).
+NotificarMuerte: estado=Muerto, StopAllCoroutines, agente.isStopped y
+agente.enabled=false.
+ReiniciarEstado: hard reset a la guardia con vida completa.
+API de integracion: ConfigurarGuardia, ConfigurarCentroGuardia,
+AplicarInmovilizacion(duracion), ReiniciarEstado, EstadoActual, RetrocesoActivo,
+Inmovilizado.
+
+### EnemyAnimatorDriver.cs
+Sincroniza el Animator del enemigo con EnemyAI/NavMeshAgent usando SOLO la API
+publica (EstadoActual, RetrocesoActivo, salud.OnDied). Escribe Speed (magnitud de
+agente.velocity normalizada), Attack por flanco de entrada al estado Ataque,
+TakeDamage por flanco de subida de RetrocesoActivo y Die al morir.
+Rebind + applyRootMotion=false en OnEnable. Controladores AC_Scorpion y
+AC_Quimera exponen exactamente esos cuatro parametros.
+
+
+--------------------------------------------------------------------------------
+5.5 PUZZLES DEL NIVEL 1
+--------------------------------------------------------------------------------
+
+### PuzzleRaicesCorruptas.cs
+Puzzle 1 del Nivel 1 ("Circuito de Presion y Falla de Basalto"). Orden ESTRICTO
+con ventana temporal.
+Estados internos: EsperandoA, VentanaAbierta, Resuelto.
+ReportarPisada(RolPlacaRaiz):
+  · A -> AbrirVentana (tiempoRestante = ventanaSegundos, canal en colorActivo).
+  · B -> si la ventana esta abierta, Resolver(); si no, Reiniciar("B antes que A").
+Update: si la ventana esta abierta descuenta y, al expirar, Reiniciar.
+Resolver: estado=Resuelto, pinta el canal, hundimiento.Hundir(),
+LanzarVfxRaices (shake + VFX 'Desaparecer_Raices' + apagado a los segundosVfx),
+GameProgressManager.puzzleRaicesNivel1Resuelto = true,
+canvasHUD.SumarProgreso(progresoAlResolver) y UnityEvent alResolver.
+Reiniciar (ventana expirada o B antes que A): pinta el canal inactivo y publica
+alResetear.
+Todo el feedback del canal runico va por MaterialPropertyBlock (_BaseColor y
+_EmissionColor).
+
+### PlacaPresionRaiz.cs
+Trigger de una placa. OnTriggerEnter -> puzzle.ReportarPisada(rol).
+EsHeroe = GetComponentInParent<TagTeamManager>() o tag Player.
+
+### HundimientoRaices.cs
+Secuencia de la barrera de raices: desactiva de INMEDIATO el collider `bloqueo`
+(el paso se libera sin esperar a la animacion), interpola la Y de `vines` hacia
+abajo durante `duracion` con una sacudida decreciente en X/Z y desactiva el
+objeto al terminar si desactivarAlTerminar.
+La distancia de hundimiento y la amplitud de la sacudida se DEDUCEN de la
+geometria real: MedirAltura() = Bounds.size.y de todos los renderers;
+MedirAmplitud() = 1.5 % del ancho menor. Idempotente (hundido).
+
+### PuzzleActivator.cs  (IGolpeableElemental)
+Elemento golpeable de puzzle (totem runico, ranura, corazon de savia).
+Awake cachea renderers, crea MaterialPropertyBlock, guarda escalaBase y pinta el
+color apagado. RecibirGolpeElemental solo arma el pulso de escala (0.14 s hasta
+1.12). Encender(bool) conmuta _BaseColor y _EmissionColor (color * 0.55).
+Ya NO conoce ningun gestor de secuencia: el antiguo SequencePuzzleManager fue
+retirado (ver seccion 7).
+
+### PuzzleLoreTotems.cs
+Gestor del bloque 06_Puzzle_Lore. Lleva la lista de TotemLore de la zona y una
+revision constante en Update (ComprobarVictoria).
+RegistrarEncendido(totem): lo añade a la lista si faltaba, persiste el fragmento
+en GameProgressManager.RegistrarFragmento (solo si el totem tiene EmisorLore con
+lore), sincroniza contadores y comprueba la victoria.
+ComprobarVictoria: si TODOS los totems estan encendidos y no estaba abierto ->
+pasoAbierto, Disolver() y canvasHUD.SumarProgreso.
+Disolver: desactiva barreraSello, activa pasoHabilitado, tiñe visualSello
+(_BaseColor/_EmissionColor con MaterialPropertyBlock: colorDisuelto con emision
+0.05 frente a colorSellado con 0.9) y abre el paso al Altar del Arbol Sombrio.
+Absorbe el antiguo SelloNarrativo.
+
+### TotemLore.cs
+MECANICA del totem: trigger + banner + 'F' + fuego azul + luz. NADA de historia.
+Awake fuerza isTrigger, resuelve la luz hija, resuelve entrada/canvasHUD y deja
+fuego a 0 y luz apagada.
+Update: con modal abierto retira el aviso; si el jugador esta dentro reafirma
+"Presiona [F] para encender" cada frame y enciende con 'F'.
+Encender (idempotente): yaEncendido, _Intensity a intensidadEncendido en todos los
+renderers de visualesFuego (bloque propio), enciende la Point Light, avisa a
+GestorOrientado (PuzzleLoreTotems) y publica OnLeido.
+MarcarLeido(bool) permite restaurar estado. IdFragmento es la clave persistente.
+
+### EmisorLore.cs  ([RequireComponent(TotemLore)])
+Aporta SOLO la parte narrativa. Guarda titulo y cuerpo; TieneLore = cuerpo no
+vacio. En OnEnable se suscribe a TotemLore.OnLeido; al encenderse llama a
+Gestor_Lore.MostrarLore(titulo, cuerpo). Un totem sin EmisorLore se enciende
+igual pero no abre el panel.
+
+### MonolitoPista.cs
+Trigger del monolito de pista. Entrada -> banner "Presiona [F] para ver la pista";
+'F' -> oculta el banner y abre Modal_Pistas con `lore` (SetActive(true); el modal
+pausa el juego por su UIModalWindow).
+Salida del trigger (OnTriggerExit) -> pistaAbierta=false, oculta banner Y apaga el
+modal: limpieza total de la pantalla, de modo que el ciclo se reanuda la proxima
+vez.
+
+### CeldaDeRescate.cs
+Secuencia de rescate de Illya (08_Altar...). Trigger + banner
+"Libera a Illya con el poder de la tierra [F]".
+Update: SincronizarPrisionera() (Illya solo existe mientras exista su jaula);
+si la jaula esta inactiva no hay nada que rescatar; si no, reafirma el aviso y
+libera con 'F'.
+Liberar (idempotente, opcionalmente exige GameProgressManager.bossNivel1Derrotado):
+lanza SecuenciaRescate.
+SecuenciaRescate:
+  1. ReproducirAperturaJaula (reproduce el clip con el componente Legacy
+     `Animation`, con tope de seguridad esperaMaximaAnimacion),
+  2. jaula.SetActive(false),
+  3. GameProgressManager.DesbloquearIllya(true) + canvasHUD.SumarProgreso,
+  4. LanzarVfxJaula ('Desaparecer_Jaula', VFX Graph) y apagado a los segundosVfx,
+  5. activa a Illya, dispara el trigger "Rescate" de su Animator y MirarAlHeroe,
+  6. MostrarPistaMientrasHabla: publica mensajePista en el Banner_Instrucciones
+     mientras el Animator este en el estado "Hablar" (SOLO LEE el Animator: no
+     toca parametros ni transiciones), ajustando el auto-tamano de TMP y
+     RESTAURANDO despues los valores originales.
+Illya se queda estatica en Idle: no sigue al heroe en esta escena.
+
+### CofreRecompensa.cs
+Cofre de 04_Primera Recompensa. Trigger + banner "Presiona [F] para abrir".
+'F' -> IniciarApertura -> RutinaApertura:
+  a) animacionCofre.Play(nombreClipApertura) con el componente Legacy `Animation`
+     (clip embebido en el modelo; NO usa Animator),
+  b) pulso del halo: _Intensity = sin(avance*PI) * intensidadMaxima durante
+     duracionPulso, y vuelta a 0,
+  c) barreraSello.SetActive(false).
+Material propio del halo (halo.material) para no afectar a otros cofres.
+OnValidate avisa si el collider no esta en modo Trigger.
+
+### ActivadorPortal.cs
+Interruptor del portal de salida del Nivel 1. Trigger + banner
+"Resuena con el elemento piedra [F]".
+Awake: fuerza isTrigger, oculta banner y DESACTIVA triggerAltar.
+Update: reafirma el aviso y con 'F' llama a Activar (idempotente):
+  1. vfxActivarPortal.SetActive(true) + VisualEffect.Play(),
+  2. EncenderAltar(): sustituye TODAS las entradas de sharedMaterials del
+     altarRenderer por `materialAltarEncendido` (el unico con _EMISSION
+     encendida). Sin lerps y sin copiar materiales,
+  3. triggerAltar.enabled = true (a partir de aqui cruzarlo carga la escena 2
+     via TransicionAltarNivel1),
+  4. alActivarse.Invoke() (en el Nivel 2 este UnityEvent abre el Modal_Victoria).
+El totem NO enciende su propio material.
+
+### RelayAparicion.cs
+Muestra objetoARevelar cuando muere el HealthComponent de su mismo GameObject.
+Se usa en el pedestal destructible de la arena del jefe del Nivel 1 (revela la
+Llave de las Zarzas). Idempotente via `revelado`.
+
+
+--------------------------------------------------------------------------------
+5.6 PUZZLES Y FLUJO DEL NIVEL 2
+--------------------------------------------------------------------------------
+
+### MinijuegoFlores.cs  (IGolpeableElemental)
+Puzzle 1 de la Isla Spawn: las tres Flores_Puzzle.
+NO duplica logica de combate: PlayerCombat le entrega el impacto por
+GetComponentInParent<IGolpeableElemental>. Solo la magia de Madera (Illya)
+resuelve el puzzle (elementoRequerido).
+RecibirGolpeElemental: descarta elementos incorrectos, elige la flor mas cercana
+al punto de impacto dentro de radioImpacto (FlorMasCercana sobre el centro del
+Renderer) y llama a GolpearFlor.
+GolpearFlor: marca alcanzadas[i], incrementa golpeadas, ReproducirDesaparicion
+(desparenta el hijo "Flor_Desaparecer", hace Play del VisualEffect y de todos sus
+ParticleSystem y Destroy(vfx, vidaVfx)) y desactiva la flor. Al llegar a 3 llama
+a pilar.Completar().
+Expone Total, Golpeadas, Restantes, Completado.
+
+### LogicaPilar.cs  ([RequireComponent(Collider)])
+Controla las cuatro piezas de un Pilar de Resonancia:
+  1. escudo `Aparicion` (arranca ACTIVADO y bloquea el paso),
+  2. orbe (visible desde el principio, inaccesible hasta retirar el escudo),
+  3. conexion al puente (arranca apagada),
+  4. interaccion ('F') con el Banner_Instrucciones.
+Awake: resuelve entrada/canvasHUD, prefiere un BoxCollider dedicado y lo pone en
+Trigger (si el pilar conserva su MeshCollider de pedestal, NO se convierte) y
+AplicarEstadoInicial (escudo on, orbe on, puente off, banner oculto).
+Completar() (destino de la senal que envian MinijuegoFlores y el UnityEvent
+alCompletar de un GestorOleada): retira el escudo, publica alCompletarse.
+Update: si completado && !recogido && jugadorDentro, REAFIRMA cada frame el
+mensaje "Recoge el Astro de Viento [F]" (para que ningun otro sistema lo pise) y
+recoge con 'F'.
+Recoger(): desactiva el orbe, canvasHUD.SumarProgreso(progresoAlRecoger),
+activa el GameObject del puente, oculta el banner y publica alRecogerse.
+OnTriggerEnter/Exit gestionan jugadorDentro y el banner.
+El pilar NO conoce el origen de la recompensa (flores o combate): es el
+desacoplamiento buscado.
+
+### GestorObeliscos.cs  ([RequireComponent(BoxCollider)])
+Puzzle secuencial de 04_Isla_Templo_Central_Puzzle.
+Estado interno: Esperando / Girando / Resuelto, con obeliscoActivo,
+obeliscosConfirmados, girosDeEsteObelisco, jugadorDentro y reiniciando.
+Awake: resuelve entrada/canvasHUD, convierte su BoxCollider en Trigger (es el
+AREA de los tres obeliscos), DESACTIVA el trigger del fresco, bloquea todos los
+obeliscos y oculta el banner.
+CICLO (Update):
+  · Esperando + jugadorDentro -> IniciarCiclo (resetea contadores, desactiva el
+    fresco, habilita el Obelisco 1 y muestra "Girar [F]").
+  · JugadorEnFresco() -> muestra "Confirmar Posicion [F]" y 'F' confirma.
+    JugadorEnFresco no usa el evento del trigger del fresco sino
+    Physics.OverlapBoxNonAlloc sobre sus bounds con QueryTriggerInteraction.Collide,
+    y solo cuando ese trigger esta enabled.
+  · jugadorDentro -> 'F' gira el obelisco activo (GirarObeliscoActivo). Tras el
+    primer giro ACTIVA el trigger del fresco y muestra "Ve al fresco para guardar
+    el dato".
+  · Fuera del area con giro pendiente -> mantiene el aviso del fresco.
+ConfirmarEnFresco: incrementa obeliscosConfirmados, DESACTIVA el trigger del
+fresco, resetea girosDeEsteObelisco y habilita el siguiente obelisco; tras el
+tercero llama a ValidarSecuencia.
+ValidarSecuencia: compara PasoActual de cada obelisco con rotacionesCorrectas
+(0/90/180/270). Correcto -> Resuelto, bloquea obeliscos, muestra mensajeExito y
+pilar.Completar(). Incorrecto -> ReiniciarTrasError: mensajeError, espera
+esperaTrasError, Resetear() de los tres y reinicio del ciclo desde el Obelisco 1
+(o vuelta a Esperando si el jugador ya salio del area).
+El fresco NUNCA se apaga: solo se conmuta el `enabled` de su collider Trigger, y
+el gestor es el unico que lo toca.
+
+### ObeliscoInteractivo.cs
+Solo la rotacion de una pieza: gradosPorPaso (90) y duracionGiro (0.35 s).
+NO lleva trigger ni detecta al jugador; quien decide CUANDO gira es GestorObeliscos.
+Girar() solo si habilitado y no girando; Update interpola con SmoothStep entre el
+angulo de inicio y el objetivo.
+CLAVE: PasoActual se calcula sobre el angulo OBJETIVO (anguloObjetivo), no sobre
+el interpolado, de modo que la validacion nunca lee un valor intermedio.
+Resetear() vuelve a 0 sin animacion.
+
+### ZonaDeAbismo / PlayerController.Reubicar
+Ver 5.1 y 5.2: son el sistema de proteccion contra caidas del Nivel 2.
+
+
+--------------------------------------------------------------------------------
+5.7 HUD Y MODALES
+--------------------------------------------------------------------------------
+
+### Canvas_HUD.cs
+Gestor unico del HUD. No construye ni reorganiza nada: escribe en Sliders,
+Images y TextMeshPro ya serializados (llamado "HUD fisico").
+RESPONSABILIDADES Y API:
+  · Identidad: esNivel1, tagTeam, txtHeroName, barraVidaCaelen/Illya,
+    iconoCentralCaelen/Illya, iconoIllyaSlot2 + tinteBloqueado.
+  · Awake: UIModalWindow.ReiniciarPausa() (el contador de pausa es estatico y
+    sobrevive a la recarga: hay que limpiarlo antes de que se abra nada) y
+    resuelve tagTeam si falta.
+  · Start: se suscribe a OnHeroeCambiado y OnVidaHeroeCambiada; AplicarTinteNivel;
+    ActualizarCooldowns(1,1,1); InicializarBarraDeProgreso (0 % en N1, 50 % en N2);
+    ActualizarHeroeHUD; y en el Nivel 1 auto-tutorial: RutinaAyudaInicial abre
+    Modal_Ayuda a los 2 s reales si no hay modal abierto ni derrota.
+  · ActualizarHeroeHUD(bool esCaelen): nombre del heroe activo, conmuta barras y
+    simbolos centrales del pentagrama. SOLO se invoca cuando el Tag-Team confirma
+    el relevo (evento), nunca al pulsar la tecla.
+  · ActualizarVidaHeroeActivo(actual,max): escribe el Slider normalizado 0..1.
+  · ActualizarCooldowns(dash, q, especial): fillAmount = 1 - progreso (0 = listo,
+    sin oscurecer; 1 = recien usada). Los datos son REALES, enviados por
+    PlayerCombat; el HUD no calcula tiempos.
+  · Apertura de modales: AbrirModalResonancia/Recursos/Pausa/Ayuda/Configuracion
+    -> AbrirModal(go) -> UIModalWindow.Abrir() (zoom) o SetActive(true) si no
+    tiene el componente. El HUD NO escribe Time.timeScale.
+  · MostrarModalDerrota(mensaje) escribe txtDerrota ANTES de activar el panel;
+    OcultarModalDerrota.
+  · MostrarBannerInstrucciones(mensaje) / OcultarBannerInstrucciones: banner
+    contextual que cada objeto interactuable REAFIRMA cada frame mientras el
+    heroe esta en su radio.
+  · SumarProgreso(valor) (Clamp01) + RefrescarTextoProgreso ("Progreso NN%").
+  · AplicarTinteNivel(): el icono satelite de Illya va gris en el N1 y blanco en
+    el N2.
+
+### UIModalWindow.cs
+VENTANA MODAL GENERICA = animacion de zoom + AUTORIDAD UNICA de la pausa.
+No construye nada: opera sobre el GameObject 'Modal_*' ya existente, desactivado.
+Modelo de pausa COMPARTIDO (contador estatico `modalesAbiertos`):
+  · OnEnable (ya sea por Abrir() o por un SetActive(true) externo) -> sumar 1 ->
+    Time.timeScale = 0;
+  · OnDisable (Cerrar, SetActive(false) de un boton, recarga de escena) -> restar
+    1 -> timeScale = 1 solo si no queda ningun modal.
+  · pausarJuego = false desactiva esa contribucion (avisos que no deben congelar).
+  · ReiniciarPausa() (static): contador a 0 y timeScale a 1. La llaman
+    Canvas_HUD.Awake, los botones de reinicio y TransicionAltarNivel1 para que
+    ninguna escena arranque congelada.
+Animacion: la ventana se anima desde 0 hasta la ESCALA DE DISENO guardada en la
+escena (escalaCapturada) — nunca hasta (1,1,1) a ciegas — con
+Time.unscaledDeltaTime, de modo que funciona con timeScale = 0.
+El CanvasGroup se activa con blocksRaycasts=true desde el primer frame para que
+los botones reciban clics durante la pausa.
+API: HayModalAbierto (static), EstaAbierto, Abrir, Cerrar (con animacion),
+CerrarInmediato, Alternar.
+
+### HUDCursorDetector.cs  ([DefaultExecutionOrder(-50)])
+Publica PunteroSobreUI = hover real || puntero dentro de alguna `zonas` ampliada
+`margen` px || UIModalWindow.HayModalAbierto, y lo refleja en
+CameraFollow.RotacionPausada. Nunca bloquea ni deforma el cursor.
+
+### BrujulaRunicaUI.cs
+Rota la aguja en Z segun -jugador.eulerAngles.y con SmoothDampAngle
+(proyecto del norte del mundo).
+
+### Billboard.cs  ([DefaultExecutionOrder(50)])
+Orienta un elemento de UI en World Space hacia la camara (barras de vida
+flotantes). `bloquearEjeY` mantiene la vertical fija. La camara viene del
+Inspector (sin Camera.main).
+
+### WorldSpaceHealthBar.cs
+Barra de vida flotante de enemigos. Observador puro: se suscribe a
+OnHealthChanged (RefrescarVida escribe el Slider con maximo = MaxHealth) y a
+OnDied (OcultarAlMorir: alpha 0 + SetActive(false)). Asigna nombre de arquetipo y
+colores en Awake.
+
+### Modales (scripts pequenos de cierre y contenido)
+Gestor_ModalPausa.cs      · CerrarModal() (solo apaga el GameObject; la pausa la
+                            libera el OnDisable de UIModalWindow). Ya NO publica
+                            el porcentaje de avance: lo pinta Barra_Progreso.
+Gestor_ModalAyuda.cs      · CerrarModal().
+Gestor_ModalConfiguracion.cs · Slider_Volumen -> EstablecerVolumen(float) ->
+                            GestorAudioGlobal.Obtener().EstablecerVolumen(valor) +
+                            texto "Volumen de audio: NN%"; SincronizarSlider() en
+                            OnEnable usa SetValueWithoutNotify para heredar el
+                            valor vigente SIN re-disparar el evento; CerrarModal().
+Gestor_ModalRecursos.cs   · CerrarModal + fichas de ORO PURO / CRISTALES DE VOTO /
+                            ESENCIAS ELEMENTALES (iconos + textos de detalle).
+Gestor_ModalResonancia.cs · CerrarModal + SumarOro(int) + siete selectores de nodo
+                            del pentagrama que mueven `objetoBrillo` a la posicion
+                            del boton y escriben nombre/costo/descripcion.
+Gestor_ModalDerrota.cs    · OnEnable escribe titulo y cuerpo segun esNivel1
+                            ("CAIDO EN COMBATE" / "CAIDOS EN COMBATE") + CerrarModal.
+Gestor_ModalVictoria.cs   · VolverAJugar(): UIModalWindow.ReiniciarPausa,
+                            timeScale = 1 y SceneManager.LoadScene("Maqueta Nivel 1").
+Gestor_Lore.cs            · MostrarLore(titulo, cuerpo) abre el Modal_Lore por su
+                            UIModalWindow (que congela el juego); Cerrar y
+                            CerrarInmediato. No escribe la pausa.
+
+REGLA DE ORO DEL HUD (resumen ejecutable):
+  1. Ningun script de UI escribe Time.timeScale salvo UIModalWindow y los botones
+     de reinicio justo antes de LoadScene.
+  2. Los listeners de botones y sliders son PERSISTENTES DE INSPECTOR. Nunca se
+     añaden por Start() ni por codigo en runtime.
+  3. El HUD no crea, renombra ni mueve GameObjects del canvas en runtime.
+
+
+--------------------------------------------------------------------------------
+5.8 GESTORES DE ARENA Y HERRAMIENTAS DE EDITOR
+--------------------------------------------------------------------------------
+
+### GestorOleada.cs  (DisallowMultipleComponent)
+Contador de oleada. Vigila la muerte de TODOS los enemigos asignados y solo
+cumple su hito cuando el contador de bajas llega a cero (matar a uno solo no
+marca el hito: sustituye los hitos individuales).
+Awake: restantes = miembros.Count. OnEnable: Suscribir + Recalcular (en Editor
+toma el tamano de la lista; en Play cuenta los realmente vivos y, si ya son 0,
+completa). AlMorirMiembro descuenta y completa a 0.
+Completar (una sola vez): GameProgressManager.MarcarHito(hitoAlCompletar),
+canvasHUD.SumarProgreso(progresoAlCompletar) y UnityEvent alCompletar (aqui se
+cablea en el N2 el "Completado" del Pilar de la Arena A).
+Configurar(lista, hito) permite montar la oleada desde el integrador de escena.
+
+### Herramientas de Editor (Assets/Scripts/Editor) — NO entran en el build
+HUDGeneratorTool, VFXGeneratorTool, Level1BlockoutBuilder, Level1AdvancedDecor,
+Level1DetailAndAtmosphere, Level2WindIslandsBuilder: generadores de contenido de
+la maqueta (HUD, VFX, blockout y decoracion de ambos niveles). Son herramientas
+de autor, no gameplay.
+Assets/Scripts/Editor/AuraTemp/*: scripts temporales de auditoria e integracion
+(Survey, SurveyN1, UiDump, Diag, N1Assemble, N2Assemble, UIAssemble, ToggleModal,
+Orphans, CleanupOrphans, DocSurvey). NO forman parte del juego y pueden borrarse
+en bloque sin afectar a ninguna escena.
+
+
+================================================================================
+6. FLUJO EXTREMO A EXTREMO
+================================================================================
+
+NIVEL 1 — Maqueta Nivel 1 (Level1_Bosque_Oscuridad_Blockout)
+  01_Zona_Spawn        Spawn de Caelen. Canvas_HUD abre Modal_Ayuda a los 2 s.
+  02..04               Travesia y Arena A: GestorOleada con la fauna corrupta.
+                       Al morir el ultimo -> hito EnemigoNivel1 (10 %) +
+                       SumarProgreso.
+  05_Puzzle_Raices     MonolitoPista da la pista; PlacaPresionRaiz A -> ventana
+                       de 5 s -> B -> PuzzleRaicesCorruptas.Resuelve ->
+                       HundimientoRaices hunde Vines + VFX 'Desaparecer_Raices'
+                       (20 %). Los colliders del entorno son estaticos y el
+                       NavMeshSurface del root esta horneado con
+                       useGeometry=PhysicsColliders.
+  06_Puzzle_Lore       9 TotemLore (con EmisorLore). Al encenderlos todos,
+                       PuzzleLoreTotems disuelve el sello y abre el paso al
+                       altar. Cada totem entrega su fragmento a Gestor_Lore.
+  08_Altar...          Jefe_ScorpionDelAbismo (HitoMuerte JefeNivel1, 40 %).
+                       CeldaDeRescate libera a Illya (50 % + pista en el banner).
+                       Totem_Final_N1 (ActivadorPortal): 'F' enciende el altar
+                       (material Altar_Encendido), habilita el trigger del altar
+                       y al cruzarlo TransicionAltarNivel1 marca
+                       illyaActivaEnNivel2 y carga la escena 1.
+
+NIVEL 2 — Maqueta Nivel 2 (Level2_Isla_Del_Viento_Blockout)
+  Arranque             TagTeamManager lee illyaActivaEnNivel2 -> Illya al frente,
+                       Caelen de reserva. Canvas_HUD parte en 50 %.
+  01_Isla_Spawn        Flores_Puzzle + MinijuegoFlores. Illya golpea las 3 flores
+                       con el proyectil (clic izquierdo para apuntar, Q para
+                       disparar) -> pilar.Completar() retira `Aparicion` ->
+                       'F' recoge el orbe (10 %), activa el puente y publica
+                       alRecogerse.
+  02_Isla_ArenaA       GestorOleada de las dos Quimeras -> su UnityEvent
+                       alCompletar llama a LogicaPilar.Completar del Pilar 2.
+  04_Isla_Templo...    GestorObeliscos: area -> girar Obelisco 1 -> fresco ->
+                       Obelisco 2 -> fresco -> Obelisco 3 -> fresco ->
+                       ValidarSecuencia -> pilar 3 libre.
+  05_Isla_Boss...      Jefe_InquisidorAlado (HitoMuerte GuardianNivel2, 90 %).
+                       Su UnityEvent alCumplirse activa el trigger del altar
+                       final y muestra "Ofrecer Astros de Viento [F]".
+  Cofre                Puente_Fisico_Cofre_TramoA/B cierran los huecos de 5.16 m
+                       y 3.30 m hasta la isla del cofre. CofreRecompensa abre con
+                       'F' (Animation legacy + pulso del halo + libera barrera).
+  Altar final          'F' -> ActivadorPortal cambia el material a
+                       Altar_Encendido y su UnityEvent alActivarse abre
+                       Modal_Victoria -> Boton Reiniciar ->
+                       Gestor_ModalVictoria.VolverAJugar() recarga el Nivel 1.
+
+Derrota (cualquier nivel)
+  HealthComponent.OnDied -> TagTeamManager releva al companero o, si ya no queda,
+  RutinaDerrota -> trigger Muerte -> espera -> Canvas_HUD.MostrarModalDerrota ->
+  UIModalWindow congela. 'R' o Btn_Reiniciar -> TagTeamManager.Reaparecer ->
+  limpieza de pausa y de GameSaveState/GameProgressManager + recarga de escena.
+
+
+================================================================================
+7. REGISTRO DE CAMBIOS DE ESTA ITERACION
+================================================================================
+A) AUDIO PERSISTENTE Y SLIDER
+   · Nuevo Assets/Scripts/Core/GestorAudioGlobal.cs (singleton DontDestroyOnLoad +
+     PlayerPrefs, clave "VFX_VolumenGlobal", aplica AudioListener.volume).
+   · AudioSource ambiental en ambas escenas como OBJETO RAIZ de la escena (no
+     bajo _Managers, porque _Managers es DontDestroyOnLoad via
+     GameProgressManager y la pista del N1 seguia sonando en el N2):
+       N1 -> Audio_Ambiental_N1 -> asian_background_music-praslin-vallee-de-mai-526027.mp3
+       N2 -> Audio_Ambiental_N2 -> exventry-palmera-de-la-suerte-600684.mp3
+     playOnAwake = true, loop = true, spatialBlend = 0, volume = 1.
+   · Gestor_ModalConfiguracion reescrito con Slider_Volumen + Txt_VolumenPct y
+     listener persistente OnValueChanged -> EstablecerVolumen.
+     IMPORTANTE: la llamada persistente debe tener m_Mode = 0 (EventDefined,
+     "Dynamic float"). El prefab quedo con m_Mode = 4 (Float, argumento constante
+     0) y por eso el Slider mandaba siempre 0 y silenciaba el juego; se corrigio
+     en Assets/Prefabs/UI/Canvas_HUD.prefab con SerializedObject. El path real de
+     la propiedad es m_OnValueChanged.m_PersistentCalls.m_Calls (un unico
+     'm_PersistentCalls', no dos).
+   · El valor heredado entre escenas queda garantizado por PlayerPrefs + el
+     reaplicado en SceneManager.sceneLoaded + SincronizarSlider en OnEnable.
+
+B) FISICAS, STATIC Y NAVMESH
+   · Nivel 1: 89 MeshCollider nuevos sobre el entorno (excluidos por patron
+     arbusto, lago/agua/water/lake, cofre, illya, desaparecer, activar_portal,
+     halo_brillo, celda_illya, luces, quad, cube, sphere). 451 objetos marcados
+     Static (union de todas las flags). NavMeshSurface del root con
+     useGeometry = PhysicsColliders, rehorneado.
+   · Nivel 2: 65 MeshCollider nuevos. 175 objetos marcados Static. El
+     NavMeshSurface usa useGeometry = RenderMeshes (los colliders no alteran su
+     bake; si los flags static).
+   · Puente al Cofre del N2: dos tramos (Puente_Fisico_Cofre_TramoA 6.60 m en
+     x=-46.90 y TramoB 4.80 m en x=-66.20) con material M_L2_VientoCorriente,
+     layer 9, techo Y=4.27 y sizeY=0.40, que cierran huecos medidos de 5.16 m y
+     3.30 m. El Cofre recibio la logica de loot/banner del Nivel 1
+     (bannerInstrucciones, textoInstruccion, entrada, mensajeEntrada
+     "Presiona [F] para abrir", animacionCofre y halo).
+   · Se emitio en consola "BAKE PENDIENTE: Ejecutar Window > Rendering > Lighting
+     > Generate Lighting." en ambas escenas: los Light Probes / lightmaps siguen
+     pendientes de bake manual.
+
+C) LIMPIEZA DE HUERFANOS
+   · Auditoria: 50 scripts runtime contrastados contra 3 escenas (502 + 298 + 9
+     MonoBehaviour), 200 prefabs y los ScriptableObjects. Cero componentes
+     "MISSING SCRIPT".
+   · Eliminados: PruebaAgilN1.cs (sin referencias) y SequencePuzzleManager.cs
+     (solo lo referenciaba PuzzleActivator) + la carpeta Assets/Scripts/Debug.
+   · PuzzleActivator perdio el campo `gestor` y la llamada RegistrarGolpe: el
+     pulso de escala sigue siendo su unico comportamiento.
+   · Nota: GameProgressManager se CONSERVA por decision de diseno.
+
+D) VERIFICACION EN PLAY MODE (auditoria instrumentada, N1 -> N2)
+   · Nivel 1: 1 Canvas_HUD (Modal_Configuracion, Slider_Volumen, Txt_VolumenPct,
+     Barra_Progreso 0.50), 270 MeshCollider, 0 componentes MISSING SCRIPT (en la
+     escena y en los 200 prefabs del proyecto), 7 NavMeshAgent en NavMesh
+     (6 Manticoras + Jefe_ScorpionDelAbismo), Time.timeScale = 1.
+   · Transicion N1 -> N2 con SceneManager.LoadScene(1): AudioListener.volume se
+     mantiene (0.42 en la prueba), PlayerPrefs idem, GestorAudioGlobal unico,
+     TagTeamManager vivo con Illya activa (ActiveHeroIndex=1, 130/130) y una sola
+     pista ambiental sonando (la del N2).
+   · Nivel 2: 3 pilares en estado inicial correcto (escudo ON, orbe ON, puente
+     off), 3 obeliscos con paso 0 y triggerFresco deshabilitado, correctas
+     configuradas 90/180/270, 0 MISSING SCRIPT, 3 NavMeshAgent en NavMesh.
+   · Puente al Cofre: 100 muestras de raycast cada 0.25 m entre x=-68.60 y
+     x=-43.60 en z=36.00 -> 0 muestras sin suelo, hueco maximo 0.00 m.
+   · Cadena del pilar ejercitada por API: Completar() apaga el escudo y deja el
+     orbe recogible; Recoger() apaga el orbe, enciende el puente y suma 0.10 al
+     progreso (0.50 -> 0.60 -> 0.70 -> 0.80) en los tres pilares.
+   · Slider de volumen: listener persistente unico (Gestor_ModalConfiguracion.
+     EstablecerVolumen) con m_Mode = 0; arrastrarlo a 0.65 y 0.20 propaga
+     AudioListener.volume y PlayerPrefs y actualiza el texto; al abrir el modal
+     hereda el valor vigente en ambos niveles.
+   · Consola: sin NullReferenceException ni MissingReferenceException durante
+     las sesiones de Play Mode.
+   · Avisos no bloqueantes encontrados: "Source mesh has over 2,097,152
+     triangles ... Fast Midphase" (malla tripo_node_a315b3af) y "Lighting data
+     asset 'LightingData' is incompatible" (bake pendiente).
+   · Se eliminaron los scripts de auditoria de Assets/Scripts/Editor/AuraTemp y
+     los volcados .txt de la raiz una vez recogida la evidencia.
+
+
+================================================================================
+8. PENDIENTES CONOCIDOS / MANTENIMIENTO
+================================================================================
+1. Bajo `Barrera_Raices_Puzle1/Vines` (N1) quedaron ~40 MeshCollider no convexos
+   sobre piezas que se hunden: el filtro de exclusion no contemplaba "vines".
+   Conviene retirarlos (HundimientoRaices solo necesita el collider `bloqueo`).
+2. `08/../06_Puzzle_Lore/escaleras/*.fbx` del N1 sigue sin collider: se omitio a
+   proposito porque un BoxCollider de bounds impediria subir.
+3. Cofre del N2: la continuidad esta calculada por geometria (huecos cerrados con
+   dos tramos), no recorrida; los pasos de 0.24 m y 0.16 m dependen del
+   stepOffset del CharacterController.
+4. El Slider de volumen ya esta verificado FUNCIONALMENTE en Play Mode en ambos
+   niveles: arrastrarlo (valor 0.65 / 0.20) mueve AudioListener.volume y
+   PlayerPrefs, actualiza Txt_VolumenPct y al abrir el modal hereda el valor
+   vigente (0.55 tras la transicion).
+5. cooldownAtaqueQ del Canvas_HUD sigue sin asignar: el radial de la Q se ignora
+   (el campo es opcional por diseno).
+6. Assets/Scripts/Editor/AuraTemp/* y los .txt de auditoria de la raiz del
+   proyecto son temporales. (ELIMINADOS al cierre de esta iteracion: ver 7.D.)
+7. Overflows de texto detectados en iteraciones previas (Txt_HeroName, Recurso_*,
+   Detalle_*, Titulo_Pausa, Titulo_Victoria/Titulo_Derrota) sin corregir.
+
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

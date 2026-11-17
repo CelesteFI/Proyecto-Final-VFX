@@ -40,7 +40,7 @@ public class Gestor_ModalResonancia : MonoBehaviour
 
         txtDetalleNombre.text = "Resonancia Elemental";
         txtDetalleCosto.text = "Costo: 1 Cristal de Voto, 1 Esencia Elemental";
-        txtDetalleDescripcion.text = "Sincroniza la energía de los héroes, potenciando los ataques combinados del Tag-Team.";
+        txtDetalleDescripcion.text = "Sincroniza la energía de los héroes, potenciando los ataques elementales.";
     }
 
     public void SeleccionarMuroBasalto()
@@ -94,6 +94,6 @@ public class Gestor_ModalResonancia : MonoBehaviour
 
         txtDetalleNombre.text = "Manto de Hojas";
         txtDetalleCosto.text = "Costo: 4 Cristales de Voto, 2 Esencias";
-        txtDetalleDescripcion.text = "Otorga camuflaje temporal, volviendo a Illya indetectable para patrullas y evadiendo aggro.";
+        txtDetalleDescripcion.text = "Otorga camuflaje temporal, volviendo a Illya indetectable para patrullas y evadiendo enemigos.";
     }
 }

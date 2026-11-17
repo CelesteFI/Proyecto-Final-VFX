@@ -291,14 +291,27 @@ public class Canvas_HUD : MonoBehaviour
     // PROGRESO
     // ------------------------------------------------------------------
 
-    /// <summary>Fija el punto de partida: 0 en el Nivel 1 y 0.5 en el Nivel 2.</summary>
-    private void InicializarBarraDeProgreso()
+    /// <summary>Punto de partida del nivel actual: 0 en el Nivel 1 y 0.5 en el Nivel 2.</summary>
+    public float ProgresoInicialDelNivel => GameProgressManager.ProgresoInicialDeNivel(esNivel1);
+
+    /// <summary>Fija el punto de partida de la barra del nivel actual.</summary>
+    public void InicializarBarraDeProgreso()
+    {
+        AplicarProgresoInicial(ProgresoInicialDelNivel);
+    }
+
+    /// <summary>
+    /// Escribe en la Barra_Progreso el valor inicial que corresponde al nivel que se va a
+    /// cargar. Lo llaman los tres reinicios (Modal_Pausa, Modal_Derrota y Modal_Victoria)
+    /// antes de cargar la escena, para que la barra concuerde con el progreso real.
+    /// </summary>
+    public void AplicarProgresoInicial(float valor)
     {
         if (Barra_Progreso == null) return;
 
         Barra_Progreso.minValue = 0f;
         Barra_Progreso.maxValue = 1f;
-        Barra_Progreso.value = esNivel1 ? 0f : 0.5f;
+        Barra_Progreso.value = Mathf.Clamp01(valor);
         RefrescarTextoProgreso();
     }
 

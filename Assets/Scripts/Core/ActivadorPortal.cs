@@ -47,6 +47,11 @@ public class ActivadorPortal : MonoBehaviour
     [Tooltip("Se invoca una sola vez al activarse el altar. El final del Nivel 2 lo usa para abrir el Modal_Victoria.")]
     [SerializeField] private UnityEvent alActivarse = new UnityEvent();
 
+    [Header("Retardo de las Consecuencias (solo UI)")]
+    [Tooltip("Segundos que se espera antes de invocar 'alActivarse'. El VFX del portal, el cambio de material del altar " +
+             "y el Trigger de paso ocurren SIEMPRE al instante: aquí solo se retrasa la UI (el Modal_Victoria). 0 = sin retardo.")]
+    [SerializeField] private float retardoConsecuencias = 0f;
+
     [Header("Estado (solo lectura)")]
     [SerializeField] private bool jugadorDentro;
     [SerializeField] private bool activado;
@@ -121,9 +126,19 @@ public class ActivadorPortal : MonoBehaviour
         if (triggerAltar != null) triggerAltar.enabled = true;
 
         // 4. Consecuencias declaradas en el Inspector (en el Nivel 2, el Modal_Victoria).
-        alActivarse?.Invoke();
+        //    El material del altar ya está cambiado en el paso 2: si hay retardo, solo se
+        //    retrasa la UI, nunca el encendido del altar.
+        if (retardoConsecuencias > 0f) StartCoroutine(InvocarConsecuenciasConRetardo());
+        else alActivarse?.Invoke();
 
-        Debug.Log("[PORTAL] El portal se ha activado y el altar admite el paso.");
+        Debug.Log($"[PORTAL] El portal se ha activado y el altar admite el paso. Consecuencias de UI en {retardoConsecuencias:F1}s.");
+    }
+
+    /// <summary>Retrasa únicamente la UI de las consecuencias (p. ej. el Modal_Victoria).</summary>
+    private System.Collections.IEnumerator InvocarConsecuenciasConRetardo()
+    {
+        yield return new WaitForSeconds(retardoConsecuencias);
+        alActivarse?.Invoke();
     }
 
     /// <summary>

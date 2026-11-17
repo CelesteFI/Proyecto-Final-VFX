@@ -1,8 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Elemento golpeable de un puzzle de secuencia (tótem rúnico, corazón de savia,
-/// engranaje eólico). Se ilumina al activarse y notifica al gestor de secuencia.
+/// Elemento golpeable de un puzzle (tótem rúnico, ranura de muro, corazón de savia).
+/// Se ilumina al activarse y responde con un pulso de escala al recibir un golpe elemental.
 /// </summary>
 [DisallowMultipleComponent]
 public class PuzzleActivator : MonoBehaviour, IGolpeableElemental
@@ -11,9 +11,6 @@ public class PuzzleActivator : MonoBehaviour, IGolpeableElemental
     [Tooltip("Índice lógico del elemento (0 = primero).")]
     public int idSecuencia;
     public string etiqueta = "Topo";
-
-    [Header("Gestor")]
-    public SequencePuzzleManager gestor;
 
     [Header("Feedback Visual")]
     [SerializeField] private Color colorApagado = new Color(0.22f, 0.16f, 0.06f, 1f);
@@ -49,13 +46,10 @@ public class PuzzleActivator : MonoBehaviour, IGolpeableElemental
         if (temporizadorPulso <= 0f) transform.localScale = escalaBase;
     }
 
-    /// <summary>Recibe el golpe del héroe y lo reenvía al gestor de secuencia.</summary>
+    /// <summary>Recibe el golpe del héroe y responde con el pulso de resonancia.</summary>
     public void RecibirGolpeElemental(HeroCombatData.ElementType elemento, Vector3 puntoImpacto)
     {
         temporizadorPulso = duracionPulso;
-
-        if (gestor != null) gestor.RegistrarGolpe(this);
-        else Debug.LogWarning($"[PUZZLE] {name} no tiene gestor de secuencia asignado.");
     }
 
     /// <summary>Enciende o apaga el elemento (resonancia rúnica).</summary>

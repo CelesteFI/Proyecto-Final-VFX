@@ -112,7 +112,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5228164222210930394
 Transform:
   m_ObjectHideFlags: 0
@@ -190,7 +190,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &5732139535043655134
 Transform:
   m_ObjectHideFlags: 0
@@ -276,7 +276,7 @@ Transform:
   m_GameObject: {fileID: 6236408610559290669}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 3}
+  m_LocalPosition: {x: -0.16, y: 1.5854324, z: 3.237629}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -441,9 +441,9 @@ MonoBehaviour:
     knockbackStrength: 5.5
     attackImpulse: 0.55
     skillCooldown: 6
-  activeHeroIndex: 0
-  illyaDesbloqueada: 0
-  iniciarConIllya: 0
+  activeHeroIndex: 1
+  illyaDesbloqueada: 1
+  iniciarConIllya: 1
   vfxRelevoCaelenEscena: {fileID: 7194781461929713042}
   vfxRelevoIllyaEscena: {fileID: 4590792140739323230}
   duracionVfxRelevo: 0.8
@@ -452,8 +452,9 @@ MonoBehaviour:
   entrada: {fileID: 5554199016541479552}
   mensajeCaelenSolo: "Caelen ha ca\xEDdo. El bosque reclama su juramento."
   mensajeAmbosCaidos: "Caelen e Illya han ca\xEDdo. El bosque reclama sus juramentos."
-  congelarJuego: 1
   pausaAntesDelModal: 2.5
+  estadoIdleCaelen: Caelen_Idle
+  estadoIdleIllya: Illya_Idle
 --- !u!114 &5554199016541479552
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -514,9 +515,8 @@ MonoBehaviour:
   puntoEspecialIllya: {fileID: 7025371042524700832}
   prefabQCaelen: {fileID: 8960369012068090033, guid: 3252aea7ab03747478a9b12c7a81c722, type: 3}
   prefabQIllya: {fileID: 7660882800764449960, guid: fc96989ac696ad64a8ddb72a713be075, type: 3}
-  vfxImpactoPiedra: {fileID: 221861251492070244, guid: 1a4d2f57f8bd9634c89fb43fca385308, type: 3}
-  AtaqueEspecial_Caelen: {fileID: 3848265919099285680, guid: bf7d9c86cbd67284fb868d8cd48529fd, type: 3}
-  AtaqueEspecial_Illya: {fileID: 6477525904819762928, guid: 76f5198e198178648b1cf12a869c0ff5, type: 3}
+  AtaqueEspecial_Caelen: {fileID: 6382153334390398300, guid: f2cb51e49953757418bfd2e58a41cee8, type: 3}
+  AtaqueEspecial_Illya: {fileID: 7294265482610351236, guid: 44771b74ee9d0684fb16601fe699a690, type: 3}
   vidaInstanciaEspecial: 5
   distanciaMuro: 2.5
   radioGolpeMuro: 2.8
@@ -525,7 +525,13 @@ MonoBehaviour:
   duracionZarzas: 2.5
   radioExplosionProyectil: 2.4
   desplazamientoOrigenProyectil: 0.15
+  elevacionOrigenProyectil: 0.45
   margenLimpiezaProyectil: 3
+  capasImpactoProyectil:
+    serializedVersion: 2
+    m_Bits: 1591
+  radioImpactoProyectil: 0.6
+  prefabImpactoVerde: {fileID: 6823302871133167919, guid: 3138a83bedbd6ad4481ba0b061da2eb6, type: 3}
 --- !u!1 &8145941748703711829
 GameObject:
   m_ObjectHideFlags: 0
@@ -551,7 +557,7 @@ Transform:
   m_GameObject: {fileID: 8145941748703711829}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 9}
+  m_LocalPosition: {x: -0.11446571, y: 1.7809148, z: 8.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
